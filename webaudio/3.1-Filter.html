@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Filter</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Filters</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        function runFilterApp(showAmplitude, showResonance, isHighPass)
+        {
+            let v = null;
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.osc.level = 1;
+            if (isHighPass)
+                Config.setHighPass(config, 0);
+            else
+                Config.setLowPass(config, 1, 0);
+            let audioCtx = Synth.initAudio(config);
+
+            function playFilter(type, btn)
+            {
+                config.osc.shape = type;
+
+                Synth.allNotesOff();
+                Synth.freqOn(220);
+                pitchSlider.oninput();
+                filterSlider.oninput();
+                if (showAmplitude)
+                    ampSlider.oninput();
+                if (showResonance)
+                    resSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            const [pitchSlider, ampSlider] = addStandardPitchSlider("sliders", showAmplitude);
+            const [filterSlider, resSlider] = addStandardFilterSlider("sliders", showResonance, [isHighPass ? 0 : 100, 0]);            
+            
+            const header = document.getElementsByClassName("header")[0];
+            if (isHighPass)
+                header.innerHTML = 'Highpass Filter';
+            else if (showResonance)
+                header.innerHTML = 'Resonant Lowpass Filter';
+            else
+                header.innerHTML = 'Lowpass Filter';
+
+            addButton("buttons", "sine", (v, btn) => playFilter(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playFilter(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playFilter(v, btn));
+            addButton("buttons", "square", (v, btn) => playFilter(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 4096;
+            cfg.showFilter = true;
+            cfg.filtertype = isHighPass ? 'highpass' : 'lowpass';
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);            
+
+            setupParentCommunication();
+        }
+        
+        const params = new URLSearchParams(location.search);
+        const showAmplitude = params.get('amp') == 1;
+        const isHighPass = params.get('hipass') == 1;
+        const showResonance = !isHighPass && params.get('res') == 1;
+        document.addEventListener('DOMContentLoaded', () => 
+            runFilterApp(showAmplitude, showResonance, isHighPass));
+    </script>
+    </body>
+</html>

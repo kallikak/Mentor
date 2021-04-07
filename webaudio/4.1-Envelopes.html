@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Envelopes</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">The Amplitude Envelope</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p>
+            Envelope
+            <div id="envSliders" class="envelopeSliders"></div>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        function runEnvelopeApp(envtype, showSpectrum = false)
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, envmod);
+            config.osc.level = 1;
+            config.filter.env = 0.25;
+
+            const adOnly = envtype == "ad";
+            let finishOff = null;
+            
+            let audioCtx = Synth.initAudio(config);
+
+            const header = document.getElementsByClassName("header")[0];
+            if (envmod)
+            {
+                header.innerHTML = 'The Filter Envelope';
+                const [filterSlider, resSlider] = addStandardFilterSlider("sliders", true);
+                const envSlider = makeSlider("env", "Env amount:", 400, 0, 100, 25, "sliders");
+            }
+            else
+            {
+                header.innerHTML = (adOnly ? 'AD' : 'ADSR') + " Amplitude Envelope";
+            }
+
+            let playtime = 0;
+            function playVoice(type, btn)
+            {
+                if (btn.disabled)
+                    return;
+                  
+                config.osc.shape = type;  
+                Config.setEnvelope(config, 
+                    attackSlider.value / 100,
+                    decaySlider.value / 100,
+                    adOnly ? 0 : sustainSlider.value / 100,
+                    adOnly ? 0 : releaseSlider.value / 100,
+                    true, true
+                );
+
+                Synth.noteOn(60);
+                if (envmod)
+                {
+                    filterSlider.oninput();
+                    resSlider.oninput();
+                    envSlider.oninput();
+                }
+                Scope.setActive(true);
+                manageButtonState(btn, true);
+                if (adOnly) 
+                {
+                    finishOff = setTimeout(() => {
+                        document.getElementById('stopButton').click();
+                    }, config.getDecayValue() * 1100 + 150);
+                }
+            }
+
+            addButton("buttons", "sine", (v, btn) => playVoice(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playVoice(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playVoice(v, btn));
+            addButton("buttons", "square", (v, btn) => playVoice(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff(false, () => Scope.setActive(false));
+                if (adOnly || finishOff)
+                {
+                    clearTimeout(finishOff);
+                    Synth.allNotesOff(true);
+                    Scope.setActive(false);
+                    manageButtonState(btn, true);
+                    finishOff = null;
+                }
+                else
+                {
+                    finishOff = setTimeout(() => {
+                        Scope.setActive(false);
+                        finishOff = null;
+                        manageButtonState(btn, true);
+                    }, config.getReleaseValue() * 1100 + 150);
+                }
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = showSpectrum ? 'spectrumCanvas' : null;
+            cfg.chartId = 'envCanvas';
+            cfg.fftSize = 8192;
+            cfg.showFilter = true;
+            cfg.enableEnv = true;
+            cfg.chartSlowdown = 3;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, cfg.chartId, 
+                showSpectrum ? [266, 266, 266] : [400, 0, 400], 200)
+            Scope.install(cfg, audioCtx, Synth.output);
+            
+            const [attackSlider, decaySlider, sustainSlider, releaseSlider] = 
+                addADSRSliders("envSliders", envtype == "ad", [30, 60, 75, 50]);
+
+            if (envmod)
+            {
+                makeSliderCallback("env", 
+                    a => Synth.setFilterEnvAmount(a / 100), true, 
+                    v => Number(v), a => a + "%");
+            }
+            
+            setupParentCommunication();
+        }
+
+        const params = new URLSearchParams(location.search);
+        const envmod = params.get('envmod') == 1;
+        const envtype = params.get('env');
+        document.addEventListener('DOMContentLoaded', () => runEnvelopeApp(envtype, envmod));
+    </script>
+    </body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Pulse Waves</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Pulse.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Pulse Waves</div>
+        <div class="controls">
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        let audioContext;
+        let output;
+        let pulse;
+
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+            
+        function runPulseApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+
+            output = audioContext.createGain();
+            Pulse.setupPulseSupport(audioContext);
+            output.connect(audioContext.destination);
+            setupInterface();
+        }
+
+        function setupInterface()
+        {
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
+            makeSlider("amp", "Amplitude:", 400, 0, 100, 50, "sliders");
+            makeSlider("pw", "Pulse Width:", 400, 50, 100, 50, "sliders");
+
+            addButton("buttons", "play", (v, btn) => {
+                if (pulse)
+                    return;
+                pulse = audioContext.createPulseOscillator();
+                pulse.connect(output);
+                pulse.start();
+                pitchSlider.oninput();
+                ampSlider.oninput();
+                pwSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            });
+            addButton("buttons", "stop", (v, btn) => {
+                if (!pulse)
+                    return;
+                pulse.stop();
+                pulse = null;
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            const pitchSlider = makeSliderCallback("pitch", 
+                f => {
+                    if (pulse)
+                    {
+                        const w = Number(pwSlider.value);
+                        const dt = (w / 100) / f;
+                        pulse.frequency.value = f;
+                        pulse.delay.setValueAtTime(dt, audioContext.currentTime);
+                        pulse.width.value = w / 100;
+                    }
+                }, true, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+            const ampSlider = makeSliderCallback("amp", 
+                a => output.gain.value = a / 100, true,
+                v => Number(v), a => a.toFixed(0) + "%");
+            const pwSlider = makeSliderCallback("pw", 
+                w => {
+                    if (pulse)
+                    {
+                        const dt = (w/ 100) / pulse.frequency.value;
+                        pulse.width.setValueAtTime(w / 100, audioContext.currentTime);
+                        pulse.delay.setValueAtTime(dt, audioContext.currentTime);
+                    }
+                }, true, v => Number(v), w => w.toFixed(0) + "Hz");
+            
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runPulseApp());
+    </script>
+    </body>
+</html>

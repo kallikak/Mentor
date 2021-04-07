@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Pulse Width Modulation</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Pulse.js"></script>
+
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Pulse Width Modulation</div>
+        <div class="controls">
+            Select LFO waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        let audioContext;
+        let output;
+        let pulse;
+        let lfo;
+        let lfoGain;
+        let delayGain;
+
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+
+        function runPWMApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+
+            output = audioContext.createGain();
+            Pulse.setupPulseSupport(audioContext);
+            output.connect(audioContext.destination);
+            setupInterface();
+        }
+
+        function setupInterface()
+        {
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
+            makeSlider("lfo", "LFO Rate:", 400, 1, 40, 2, "sliders");
+            makeSlider("pwm", "PWM Amount:", 400, 0, 100, 0, "sliders");
+
+            function play(type, btn)
+            {
+                if (pulse)
+                    pulse.stop();
+                if (lfo)
+                    lfo.stop();
+                pulse = audioContext.createPulseOscillator();
+                pulse.connect(output);
+                pulse.start();
+                lfo = audioContext.createOscillator();
+                lfo.type = type;
+                lfo.start();
+                lfoGain = audioContext.createGain();
+                lfoGain.gain.value = 0.5;
+                lfo.connect(lfoGain);
+                lfoGain.connect(pulse.width);
+                delayGain = audioContext.createGain();
+                delayGain.gain.value = 1 / pulse.frequency.value;
+                lfoGain.connect(delayGain);
+                delayGain.connect(pulse.delay);
+                pitchSlider.oninput();
+                lfoSlider.oninput();
+                pwmSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            addButton("buttons", "sine", (v, btn) => play(v, btn));
+            addButton("buttons", "triangle", (v, btn) => play(v, btn), ["bluebutton", "bluebuttonpressed"]);
+            addButton("buttons", "square", (v, btn) => play(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => play(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                if (pulse)
+                {
+                    pulse.stop();
+                    pulse = null;
+                }
+                if (lfo)
+                {
+                    lfo.stop();
+                    lfo = null;
+                }
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 4096;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+                
+            const pwmSlider = makeSliderCallback("pwm", 
+                a => {
+                    if (lfoGain)
+                        lfoGain.gain.value = a / 100 / 2;
+                }, true,
+                v => Number(v), a => a.toFixed(0) + "%");
+            const pitchSlider = makeSliderCallback("pitch", 
+                f => {
+                    if (pulse)
+                    {
+                        pulse.frequency.value = f;
+                        pulse.delay.setValueAtTime(0.5 / f, audioContext.currentTime);
+                        pulse.width.value = 0.5;
+                        delayGain.gain.value = 1 / pulse.frequency.value;
+                    }
+                }, true, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+
+            const lfoSlider = makeSliderCallback("lfo", 
+                a => {
+                    if (lfo) 
+                        lfo.frequency.value = a / 2
+                }, true,
+                v => Number(v), a => (a / 2) + "Hz");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runPWMApp());
+    </script>
+    </body>
+</html>

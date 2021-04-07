@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Wave Types</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Wave Types</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes"></table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        function runWaveTypeApp(showSpectrum)
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.volume = 0.75;
+            let audioCtx = Synth.initAudio(config);
+
+            function playVoice(type, freq, level)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+
+                Synth.allNotesOff();
+                Synth.noteOn(56);
+            }
+
+            function playWaveType(type, btn)
+            {
+                playVoice(type, 220, 0.75);
+                pitchSlider.oninput();
+                ampSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            const [pitchSlider, ampSlider] = addStandardPitchSlider("sliders", true);
+
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+        
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = showSpectrum ? 'spectrumCanvas' : null;
+            cfg.fftSize = showSpectrum ? 4096 : 8192;
+            cfg.use_dBs = true;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, 
+                showSpectrum ? [400, 400, 0] : [800, 0, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            setupParentCommunication();
+        }
+        
+        const params = new URLSearchParams(location.search);
+        const showSpectrum = params.get('showSpectrum') != 0;
+        document.addEventListener('DOMContentLoaded', () => runWaveTypeApp(showSpectrum));
+    </script>
+    </body>
+</html>

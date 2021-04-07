@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Detuning</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Detuning</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes"></table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        function runDetuneApp()
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0.2, 1, 1, 0, true, true);
+            config.volume = 0.5;
+            let audioCtx = Synth.initAudio(config);
+            let voice1 = null;
+            let voice2 = null;
+            let pitchSlider = null;
+            let detuneSlider = null;
+
+            function playVoice(type, freq, level)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+
+                Synth.allNotesOff();
+                voice1 = Synth.freqOn(freq);
+                voice2 = Synth.freqOn(freq);
+            }
+
+            function playWaveType(type, btn)
+            {
+                playVoice(type, 220, 0.75);
+                pitchSlider.oninput();
+                detuneSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            let savef;
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
+            pitchSlider = makeSliderCallback("pitch", 
+                f => {
+                    if (voice1) 
+                    {
+                        voice1.setOscFrequency(f);
+                        voice2.setOscFrequency(f);
+                    }
+                    savef = f;
+                }, false, 
+                v => Synth.noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+            makeSlider("detune", "Detune:", 400, -25, 25, 0, "sliders");
+            detuneSlider = makeSliderCallback("detune", 
+                    d => {
+                        if (voice2) {
+                            if (d == 0)
+                            {
+                                // ensure they're in phase for 0 detune
+                                Synth.setAmpEnvA(0.2);
+                                Synth.setAmpEnvR(0.04);
+                                Synth.allNotesOff();
+                                voice1 = Synth.freqOn(savef);
+                                voice2 = Synth.freqOn(savef);
+                                setTimeout(() => {
+                                    Synth.setAmpEnvA(0);
+                                    Synth.setAmpEnvR(0);
+                                }, 400);
+                            }
+                            else
+                            {
+                                voice2.setOscDetune(d);
+                            }
+                        }
+                    }, true,
+                    v => Number(v), a => a.toFixed(0) + " cents");
+
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+        
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.chartId = 'chartCanvas';
+            cfg.fftSize = 4096;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, cfg.chartId, [266, 266, 266]);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            setupParentCommunication();
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => runDetuneApp());
+    </script>
+    </body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Noise</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Effects.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Noise</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <span id="noisetypelabel">Current noise type:</span>
+            <button class="bluebutton" id="noisetypebtn">White</button>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        let audioContext;
+        let output;
+        let noisetype = Noise.WHITE_NOISE;
+        let noise;
+        let note;
+        let noiseGain;
+        let noteGain;
+        
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+            
+        function runNoiseApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+            output = audioContext.createGain();
+            output.gain.value = 0.5;
+            output.connect(audioContext.destination);
+            noteGain = audioContext.createGain();
+            noteGain.gain.value = -0.5;
+            noiseGain = audioContext.createGain();
+            noiseGain.gain.value = 0.5;
+            noteGain.connect(output);
+            noiseGain.connect(output);
+            setupInterface();
+        }
+
+        function setupInterface()
+        {
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
+            makeSlider("amp", "Note level:", 400, 0, 100, 50, "sliders");   
+            makeSlider("noise", "Noise level:", 400, 0, 100, 0, "sliders");
+
+            function playWaveType(type, btn)
+            {
+                if (noise)
+                {
+                    noise.disconnect();
+                    note.stop();
+                }
+                note = audioContext.createOscillator();
+                note.type = type;
+                note.frequency.value = noteToFreq(55);
+                note.connect(noteGain);
+                note.start();
+                noise = Noise.createNoise(noisetype, audioContext);
+                noise.connect(noiseGain);
+                pitchSlider.oninput();
+                ampSlider.oninput();
+                noiseSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                if (!noise)
+                    return;
+                noise.disconnect();
+                noise = null;
+                note.stop();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+            
+            document.getElementById("noisetypebtn").onclick = e => {
+                noisetype = ++noisetype % 4;
+                document.getElementById("noisetypebtn").innerText = Noise.NOISE_NAMES[noisetype];
+                if (noise)
+                {
+                    noise.disconnect();
+                    noise = Noise.createNoise(noisetype, audioContext);
+                    noise.connect(noiseGain);
+                }
+            }
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            const pitchSlider = makeSliderCallback("pitch", 
+                f => note.frequency.setValueAtTime(f, audioContext.currentTime), false, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+            const ampSlider = makeSliderCallback("amp", 
+                a => noteGain.gain.value = -a / 100, false,
+                v => Number(v), a => a.toFixed(0) + "%");
+            const noiseSlider = makeSliderCallback("noise", 
+                a => noiseGain.gain.value = a / 100, false,
+                v => Number(v), a => a.toFixed(0) + "%");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runNoiseApp());
+    </script>
+    </body>
+</html>

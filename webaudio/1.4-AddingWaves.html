@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Adding Waves</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+
+    <style>
+        .controlAmount
+        {
+            font-size:0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Adding Waves</div>
+        <div class="controls">
+            <h3>Create a complex waveform by mixing wave types</h3>
+            <span id="sliders"></span>
+            <span class="buttons" id="buttons"></span>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+
+        function runMixApp()
+        {
+            let mix;
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.volume = 0.75;
+            let audioCtx = Synth.initAudio(config);
+
+            // mix 0 = triangle, 100 = saw, 200 = square, and inbetween values interpolate
+            function calcMixArray(mix)
+            {
+                mix /= 100;
+                if (mix < 1)
+                    return [1 - mix, mix, 0];
+                else
+                    return [0, 2 - mix,  mix - 1];
+            }
+
+            function mixToString(mix)
+            {
+                const [triAmt, sawAmt, sqrAmt] = calcMixArray(mix);
+
+                if (mix == 0)
+                    return "Triangle";
+                else if (mix == 100)
+                    return "Sawtooth";
+                else if (mix == 200)
+                    return "Square";
+                else if (mix < 100)
+                    return "Tri " + (100 * triAmt).toFixed(0) + "%/Saw " + (100 * sawAmt).toFixed(0) + "%";
+                else
+                    return "Saw " + (100 * sawAmt).toFixed(0) + "%/Sqr " + (100 * sqrAmt).toFixed(0) + "%";
+            }
+    
+            let voices = [];
+
+            function playVoice(type, note, level)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+                return Synth.noteOn(note);
+            }
+
+            function createMix(mix)
+            {
+                const [triAmt, sawAmt, sqrAmt] = calcMixArray(mix);
+                voices[0] = playVoice('triangle', 60, -triAmt);
+                voices[1] = playVoice('sawtooth', 60, -sawAmt);
+                voices[2] = playVoice('square', 60, -sqrAmt);
+            }
+
+            function playMix(mix)
+            {
+                const [triAmt, sawAmt, sqrAmt] = calcMixArray(mix);
+                if (voices.length)
+                {
+                    voices[0].setOscLevel(-triAmt);
+                    voices[1].setOscLevel(-sawAmt);
+                    voices[2].setOscLevel(-sqrAmt);
+                }
+            }
+
+            addButton("buttons", "play", (v, btn) => {
+                createMix(mix);
+                playMix(mix);
+                Scope.setActive(true);
+                manageButtonState(btn, true);
+            });
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                voices = [];
+                manageButtonState(btn, true);
+            });
+
+            makeSlider("mix", "Mix:", 200, 0, 200, 100, "sliders");
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 4096;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            const mixSlider = makeSliderCallback("mix", 
+                m => {
+                    mix = m;
+                    if (Synth.isPlaying())
+                        playMix(m);
+                }, true, v => Number(v), m => mixToString(m));
+
+            setupParentCommunication();
+        }
+        
+        document.addEventListener('DOMContentLoaded', runMixApp);
+    </script>
+    </body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Sample and Hold</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Sample and Hold</div>
+        <div class="controls">
+            <span id="waveformbuttons">Select waveform:&nbsp;</span>
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+
+        function runSandHApp(filtermod, pulsemod, sandh)
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.lfo = {shape: 'sandh', pitch: filtermod ? 0 : 1, freq: 2, amp: 0, pulse: 0};
+            config.filter.lfo = filtermod ? 1 : 0;
+            config.volume = 0.75;
+            let audioCtx = Synth.initAudio(config);
+
+            function playVoice(type, freq, level)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+
+                Synth.allNotesOff();
+                Synth.noteOn(56);
+            }
+
+            function playWaveType(type, btn)
+            {
+                playVoice(type, 264, 0.75);
+                pitchSlider.oninput();
+                pamtSlider.oninput();
+                famtSlider.oninput();
+                lfoSlider.oninput();
+                filterSlider.oninput();
+                resSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+            
+            const [pitchSlider, ampSlider] = addStandardPitchSlider("sliders", true);
+            const [lfoSlider, pamtSlider, famtSlider] = addStandardLFOSlider("sliders", true, true);
+            lfoSlider.parentElement.firstElementChild.innerHTML = "Sample Rate"
+            const [filterSlider, resSlider] = addStandardFilterSlider("sliders", true);
+
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            cfg.showFilter = false;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runSandHApp());
+    </script>
+    </body>
+</html>

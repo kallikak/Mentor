@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Delay</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Effects.js"></script>
+
+    <style>
+        .controlAmount
+        {
+            font-size:0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Delay</div>
+        <div class="controls">
+            <span class="buttons" id="buttons"></span>
+            <p>
+            <div id="sliders"></div>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+
+        let delay;
+
+        function runDelayApp()
+        {
+            let beattime;
+            
+            const config = Config.setEnvelope(Config.getDefault(), 0, 0.3, 0.5, 0.01, true, true);
+            config.osc.shape = 'square';
+            config.osc.level = 0.5;
+            config.volume = 0.2;
+            let audioCtx = Synth.initAudio(config);
+            
+            delay  = Delay.connectDelay(audioCtx, Synth.output);
+
+            makeSlider("bpm", "Speed:", 400, 30, 120, 75, "sliders");
+            makeParagraph("sliders");
+            const [filterSlider, resSlider] = addStandardFilterSlider("sliders", true, [70, 200]);
+            makeParagraph("sliders");
+            makeSlider("lfo", "LFO Rate:", 400, 1, 400, 2, "sliders");   
+            makeSlider("fltamt", "Filter Amount:", 400, 0, 100, 66, "sliders");
+            makeParagraph("sliders");
+            makeSlider("delt", "Delay time:", 400, 0, 10, 3, "sliders");
+            makeSlider("delfb", "Delay feedback:", 400, 0, 10, 5, "sliders");
+/*
+https://www.html5rocks.com/en/tutorials/audio/scheduling/
+https://github.com/cwilso/metronome/blob/master/js/metronome.js
+http://aikelab.net/webaudiodemo/
+https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Advanced_techniques
+https://github.com/mdn/webaudio-examples/blob/master/step-sequencer/index.html
+ */
+            let timer;
+            addButton("buttons", "play", (v, btn) => {
+                const no = null;
+                const treb = [60, 72, 70, 60, 68, 60, 67, 65, no, 60, 63, 65, no, 55, 58, 63];
+                const bass = [36, 48, no, 46, 48, no, 48, 46, 48, no, 48, 46, 48, 36, 43, 46];
+
+                function transpose(index)
+                {
+                    const cycle = (index / treb.length) % 6;
+                    let trans = 0;
+                    if (cycle < 2 || (index >= 14 * treb.length))
+                        trans = 0;
+                    else if (cycle < 3)
+                        trans = 1;
+                    else if (cycle < 4)
+                        trans = 0;
+                    else if (cycle < 4.5)
+                        trans = 7;
+                    else if (cycle < 5)
+                        trans = 5;
+                    else if (cycle < 5.5)
+                        trans = 3;
+                    else if (cycle < 6)
+                        trans = 6;
+                    return trans;
+                }
+
+                let lastvoice_treb = null;
+                let lastvoice_bass = null;
+                function playnote(i)
+                {
+                    if (i / 2 > 14 * treb.length)    // twice through only
+                    {
+                        Synth.allNotesOff();
+                        clearTimeout(timer);
+                        manageButtonState(document.getElementById("stopButton"), true);
+                        return;
+                    }
+
+                    const k = Math.floor(i / 2) % treb.length;
+                    if (i % 2 == 1)
+                    {
+                        if (lastvoice_treb && (k == treb.length - 1 || treb[k + 1]))
+                        {
+                            Synth.noteOff(lastvoice_treb);
+                        }
+                        if (lastvoice_bass && (k == bass.length - 1 || bass[k + 1]))
+                        {
+                            Synth.noteOff(lastvoice_bass);
+                        }
+                    }
+                    else
+                    {
+                        const trans = transpose(i / 2);
+                        const note = treb[k];
+                        if (note)
+                        {
+                            lastvoice_treb = Synth.noteOn(note + trans);
+                        }
+                        const bassnote = bass[k];
+                        if (bassnote)
+                        {
+                            lastvoice_bass = Synth.noteOn(bassnote + trans);
+                        }
+                    }   
+                    timer = setTimeout(() => playnote(index++), beattime);
+                }
+
+                let index = 0;
+                playnote(index++);
+                manageButtonState(btn, true);
+            });
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                clearTimeout(timer);
+                manageButtonState(btn, true);
+            }, ["bluebutton", "disabled"]);
+
+            const bpmSlider = makeSliderCallback("bpm", 
+                a => beattime = 60000 / Number(a) / 8, true, // eighth notes
+                v => Number(v), a => a + "bpm");
+            const lfoSlider = makeSliderCallback("lfo", 
+                a => Synth.setLFOFrequency(a / 10), true,
+                v => Number(v), a => (a / 10) + "Hz");
+            const fltamtSlider = makeSliderCallback("fltamt", 
+                a => Synth.setFilterLFOAmount(a), true,
+                v => Number(v), a => a + "%");
+
+            const deltSlider = makeSliderCallback("delt", 
+                a => delay.delayTime.value = a / 10, true,
+                v => Number(v), v => (100 * v).toFixed(0) + "ms");
+            const delfbSlider = makeSliderCallback("delfb", 
+                a => delay.feedback.gain.value = a / 10, true,
+                v => Number(v), v => v.toString());
+
+            setupParentCommunication();
+        }
+        
+        document.addEventListener('DOMContentLoaded', runDelayApp);
+    </script>
+    </body>
+</html>

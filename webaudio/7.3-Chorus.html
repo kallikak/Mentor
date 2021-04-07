@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Chorus, Flanger, Phaser</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Effects.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Chorus, Flanger, Phaser</div>
+        <div class="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <span id="effectlabel">Current effect:</span>
+            <button class="bluebutton" id="effectbtn">Chorus</button>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+            
+        const CHORUS = 0;
+        const FLANGER = 1;
+        const PHASER = 2;
+
+        const EFFECT_NAMES = ["Chorus", "Flanger", "Phaser"];
+        const EFFECT_NODES = [];
+
+        let audioContext;
+        let tuna;
+        let output;
+        let wetGain;
+        let dryGain;
+        let effect = 0;
+        let effectNode = null;
+        let note;
+
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+
+        function updateEffect()
+        {
+            if (effectNode)
+                effectNode.stop();
+            if (note)
+                note.disconnect();
+            switch (effect)
+            {
+                case CHORUS:
+                    effectNode = Chorus.connectChorus(audioContext, note, wetGain);
+                    break;
+                case FLANGER:
+                    effectNode = Flanger.connectFlanger(audioContext, note, wetGain);
+                    break;
+                case PHASER:
+                    effectNode = Phaser.connectPhaser(audioContext, note, wetGain);
+                    break;
+            }
+            if (note)
+                note.connect(dryGain);
+        }
+            
+        function runEffectApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+            output = audioContext.createGain();
+            output.gain.value = 0.5;
+            output.connect(audioContext.destination);
+            wetGain = audioContext.createGain();
+            wetGain.gain.value = 0.5;
+            wetGain.connect(output);
+            dryGain = audioContext.createGain();
+            dryGain.gain.value = 0.5;
+            dryGain.connect(output);
+            setupInterface();
+        }
+
+        function setupInterface()
+        {
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
+            makeSlider("effect", "Effect level:", 400, 0, 100, 0, "sliders");
+            makeSlider("depth", "Effect depth:", 400, 0, 100, 50, "sliders");
+            makeSlider("speed", "Effect speed:", 400, 0, 100, 25, "sliders");
+
+            function playWaveType(type, btn)
+            {
+                if (note)
+                {
+                    note.stop();
+                    note.disconnect();
+                }
+                note = audioContext.createOscillator();
+                note.type = type;
+                note.frequency.value = noteToFreq(55);
+                note.connect(dryGain);
+                note.start();
+                updateEffect();
+                
+                pitchSlider.oninput();
+                effectSlider.oninput();
+                depthSlider.oninput();
+                speedSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                if (note) 
+                {
+                    note.stop();
+                    effectNode.disconnect();
+                    note.disconnect();
+                }
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            document.getElementById("effectbtn").onclick = e => {
+                effect = ++effect % 3;
+                updateEffect();
+                document.getElementById("effectbtn").innerText = EFFECT_NAMES[effect];
+            }
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            const pitchSlider = makeSliderCallback("pitch", 
+                f => note ? note.frequency.setValueAtTime(f, audioContext.currentTime) : null, false, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+            const effectSlider = makeSliderCallback("effect", 
+                a => wetGain.gain.value = a / 100, false,
+                v => Number(v), a => a.toFixed(0) + "%");
+            const depthSlider = makeSliderCallback("depth", 
+                a => effectNode ? effectNode.setDepth(a / 100) : null, false,
+                v => Number(v), a => a.toFixed(0) + "%");
+            const speedSlider = makeSliderCallback("speed", 
+                a => effectNode ? effectNode.setSpeed(a / 100) : null, false,
+                v => Number(v), a => a.toFixed(0) + "%");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runEffectApp());
+    </script>
+    </body>
+</html>

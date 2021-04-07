@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>LFO Shapes</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">LFO Shapes</div>
+        <div class="controls">
+            LFO shape:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p>
+            <span class="buttons2" id="buttons2"></span>
+            <p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        function runLFOModApp()
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.lfo = {shape: 'triangle', pitch: 0, freq: 2, amp: 0, pulse: 0};
+            config.filter.lfo = 0;
+            let audioCtx = Synth.initAudio(config);
+
+            function setLFOType(type, btn)
+            {
+                Synth.setLFOShape(type);
+                manageButtonState(btn);
+            }
+
+            function playVoice(type, freq, level)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+
+                Synth.allNotesOff();
+                Synth.noteOn(56);
+            }
+
+            function playWaveType(type, btn)
+            {
+                playVoice(type, 264, 0.75);
+                pitchSlider.oninput();
+                ampSlider.oninput();
+                pamtSlider.oninput();
+                lfoSlider.oninput();
+                filterSlider.oninput();
+                resSlider.oninput();
+                famtSlider.oninput();
+                Scope.setActive(true);
+            }
+
+            const [pitchSlider, ampSlider] = addStandardPitchSlider("sliders", true);
+            const [filterSlider, resSlider] = addStandardFilterSlider("sliders", true);
+            makeParagraph("sliders");
+            const [lfoSlider, pamtSlider, famtSlider] = addStandardLFOSlider("sliders", true, true);
+
+            addButton("buttons", "sine", (v, btn) => setLFOType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => setLFOType(v, btn), ["bluebutton", "bluebuttonpressed"]);
+            addButton("buttons", "square", (v, btn) => setLFOType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => setLFOType(v, btn));
+            addButton("buttons", "ramp", (v, btn) => setLFOType(v, btn));
+            addButton("buttons2", "play", (v, btn) => playWaveType(config.lfo.shape, btn));
+            addButton("buttons2", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            cfg.showFilter = false;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runLFOModApp());
+    </script>
+    </body>
+</html>

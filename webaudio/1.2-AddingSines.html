@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Adding Sines</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Adding Sines</div>
+        <div class="controls">
+            <h3>Make a 220Hz sawtooth wave by adding sine waves</h3>
+            <span id="sliders"></span>
+            <span class="buttons" id="buttons"></span>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+
+        function runSumSineApp()
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config.volume = 0.75;
+            let audioCtx = Synth.initAudio(config);
+            
+            let terms;
+
+            function playVoice(type, freq, level, real = null, imag = null)
+            {
+                config.osc.shape = type;
+                config.osc.level = level;
+                config.osc.real = real;
+                config.osc.imag = imag;
+
+                Synth.allNotesOff();
+                Synth.noteOn(56);
+            }
+
+            function playSineSum(terms, maxterms, btn)
+            {
+                if (terms == -1)
+                    playVoice('sawtooth', 220, 0.9);
+                else
+                {
+                    const real = new Float32Array(maxterms + 1);
+                    const imag = new Float32Array(maxterms + 1);
+                    for (let i = 1; i <= terms; ++i)
+                    {
+                        real[i] = 0;
+                        imag[i] = i && i <= terms ? 1 / i : 0;
+                    }
+                    playVoice('periodic', 220, 0.5, real, imag);
+                }
+                Scope.setActive(true);
+                if (btn)
+                    manageButtonState(btn);
+            }
+
+            addButton("buttons", "play", (v, btn) => playSineSum(terms, 30, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playSineSum(-1, 30, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+                
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 4096;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            makeSlider("terms", "Number of terms:", 120, 1, 25, 1, "sliders");
+
+            const termsSlider = makeSliderCallback("terms",
+                t => {
+                    terms = t;
+                    if (Synth.isPlaying())
+                        playSineSum(terms, 30, document.getElementById("playbtn"));
+                }, true, v => Number(v), v => v.toString());
+
+            setupParentCommunication();
+        }
+        
+        document.addEventListener('DOMContentLoaded', runSumSineApp);
+    </script>
+    </body>
+</html>

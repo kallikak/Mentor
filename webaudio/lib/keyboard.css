@@ -1,0 +1,47 @@
+.key 
+{ 
+    position: absolute; 
+    border: 1px solid rgba(32,32,32,0.2);
+    border-radius: 0px 0px 5px 5px;
+    cursor:pointer;
+    box-shadow: 0px 5px 1px rgba(32,32,32,0.2);
+}
+
+.activekey
+{ 
+    margin-top: 2px !important;
+    box-shadow: none !important;
+}
+
+.black 
+{ 
+    background-color: rgb(32,32,32); 
+    color: #ffffff; 
+    z-index: 1; 
+    text-shadow: 0px -1px 1px rgba(255,255,255,0.5); 
+    width: 20px; 
+    height: 70px;
+}
+
+.white 
+{ 
+    background-color: #ffffff; 
+    color: rgb(32,32,32); 
+    z-index: 0; 
+    text-shadow: 0px 1px 1px rgba(32,32,32,0.5); 
+    width: 30px; 
+    height: 120px;
+}
+
+.keyboard-holder 
+{ 
+    margin: auto; 
+    display: block;
+    position:relative; 
+    border: solid rgb(20, 102, 199) 8px;
+    border-bottom: none;
+    height: 122px;
+    width: 516px;
+    background-color: #ddd;
+    cursor:pointer !important;
+}

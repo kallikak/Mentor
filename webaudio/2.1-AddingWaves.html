@@ -97,8 +97,8 @@
                 Scope.setActive(true);
                 manageButtonState(btn, true);
             });
-            addButton("buttons", "stop", (v, btn) => {
-                Synth.allNotesOff();
+            addButton("buttons", "stop", (v, btn, immediate) => {
+                Synth.allNotesOff(immediate);
                 Scope.setActive(false);
                 voices = [];
                 manageButtonState(btn, true);

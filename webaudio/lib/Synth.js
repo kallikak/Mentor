@@ -1,8 +1,8 @@
 'use strict';
 
-var Synth = {};
+const Synth = {};
 
-var Config = {};
+const Config = {};
 
 (function(context) {
     const ascale = 2;
@@ -28,7 +28,7 @@ var Config = {};
         {
             lfo: {shape: 'triangle', freq: 2, pitch: 0, amp: 0},
             osc: {shape: 'sawtooth', level: 0.5},
-            filter: {cutoff: 1, q: 0, type: 'lowpass', lfo: 0, env: 0},
+            filter: {cutoff: 1, q: 0, type: 'lowpass', lfo: 0, env: 0, invert: false},
             ampEnv: {a: 0.2, d: 1, s: 1, r: 0.2},
             filterEnv: {a: 0.2, d: 1, s: 1, r: 0.2},
             volume: 0.5
@@ -191,6 +191,16 @@ var Config = {};
         });
     }
 
+    // set a specific frequency for the cutoff
+    namespace.setFilterCutoffFreq = function(f) 
+    {
+        config.filter.cutoff = namespace.calcInverseCutoffFrequency(f);   
+        voices.forEach(v => {
+            if (v)
+                v.setFilterCutoffFreq(f);
+        });
+    }
+
     namespace.setResonance = function(u) 
     {
         config.filter.q = u;
@@ -259,6 +269,13 @@ var Config = {};
         return Math.pow(2.0, noctaves * (cutoff - 1.0)) * nyquist;
     }
 
+    namespace.calcInverseCutoffFrequency = function(f) 
+    {
+        const nyquist = audioContext.sampleRate / 2;
+        const noctaves = Math.log(nyquist / 10.0) / Math.LN2;
+        return Math.log2(f / nyquist) / noctaves + 1;
+    }
+
     namespace.getFilterParams = function()
     {
         return {f: namespace.calcCutoffFrequency(config.filter.cutoff), q: config.filter.q, 
@@ -304,6 +321,11 @@ var Config = {};
             me.filter.frequency.setValueAtTime(namespace.calcCutoffFrequency(value), audioContext.currentTime);
         }
 
+        me.setFilterCutoffFreq = function(f) 
+        {
+            me.filter.frequency.setValueAtTime(f, audioContext.currentTime);
+        }
+
         me.setResonance = function(value) 
         {
             me.filter.Q.setValueAtTime(value, audioContext.currentTime);
@@ -333,7 +355,7 @@ var Config = {};
                 me.envelope.gain.setValueAtTime(0, now + release + 0.01);
             }
             me.filter.detune.cancelScheduledValues(now);
-            me.filter.detune.setTargetAtTime(0, now + 0.01, config.getFilterReleaseValue() / 5 + 0.01);
+            me.filter.detune.setTargetAtTime(config.invert ? 7200 : 0, now + 0.01, config.getFilterReleaseValue() / 5 + 0.01);
             const endTime = now + (immediate ? 0.012 : release);
             try
             {
@@ -407,17 +429,22 @@ var Config = {};
         me.envelope.gain.linearRampToValueAtTime(1.0, envAttackEnd);
         me.envelope.gain.setTargetAtTime(config.ampEnv.s, envAttackEnd, config.getDecayValue() / 5);
 
-        var filterAttackLevel = config.filter.env * 7200;  // Range: 0-7200: 6 octave range
-        var filterSustainLevel = filterAttackLevel * config.filterEnv.s; // range: 0-7200
-        var filterAttackEnd = config.getFilterAttackValue();
+        let filterAttackLevel = config.filter.env * 7200;  // Range: 0-7200: 6 octave range
+        let filterSustainLevel = filterAttackLevel * config.filterEnv.s; // range: 0-7200
+        if (filterSustainLevel < 0.00001)
+            filterSustainLevel = 0.00001;
+        let filterAttackEnd = config.getFilterAttackValue();
+        if (config.filter.invert) {
+            filterAttackLevel *= -1;
+            filterSustainLevel *= -1;
+        }
 
         if (!filterAttackEnd) 
             filterAttackEnd = 0.05; // tweak to get target decay to work properly
         me.filter.detune.setValueAtTime(0, now);
         me.filter.detune.linearRampToValueAtTime(filterAttackLevel, now + filterAttackEnd);
-        me.filter.detune.setTargetAtTime(Math.max(0.00001, filterSustainLevel), 
+        me.filter.detune.setTargetAtTime(filterSustainLevel, 
             now + filterAttackEnd, config.getFilterDecayValue() / 5);
-
         me.osc.start(now);
 
         return me;

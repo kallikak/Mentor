@@ -1,9 +1,9 @@
 'use strict';
 
-function manageButtonState(btn, managedisable)
+function manageButtonState(btn, managedisable, containerid = "buttons")
 {
     const isstop = btn.id === "stopButton";
-    document.getElementsByClassName("buttons")[0].querySelectorAll('button').forEach((e) => {
+    document.querySelectorAll("#" + containerid)[0].querySelectorAll('button').forEach((e) => {
         e.classList.remove("bluebuttonpressed")
         if (managedisable && e.id !== "stopButton")
             e.disabled = !isstop;
@@ -183,7 +183,7 @@ function addStandardFilterSlider(slidersId, addResonance, defaults)
     return [filterSlider, resSlider].filter(s => s != null);
 }
 
-function makeVerticalSlider(id, label, width, min, max, value, slidersid)
+function makeVerticalSlider(id, label, height, min, max, value, slidersid)
 {
     const slider = makeElement("input", id + "Slider", "slider");
 
@@ -191,7 +191,7 @@ function makeVerticalSlider(id, label, width, min, max, value, slidersid)
     slider.setAttribute("max", max); 
     slider.setAttribute("value", value); 
     slider.setAttribute("type", "range");
-    // slider.style.cssText = `width:${width}px;`;
+    slider.style.cssText = `height:${height}px;`;
 
     document.getElementById(slidersid).appendChild(slider);
     return slider;
@@ -246,7 +246,7 @@ function addButton(containerId, name, callback, classes = ["bluebutton"])
         classes.forEach(c => b.classList.add(c));
     b.innerHTML = name;
     document.getElementById(containerId).appendChild(b);
-    b.onclick = e => callback(name, e.target);
+    b.onclick = e => callback(name, e.target, e.immediate);
 }
 
 // For when the app is in an iframe
@@ -271,7 +271,7 @@ function setupParentCommunication()
         {
             const stopButton = document.getElementById('stopButton');
             if (stopButton)
-                stopButton.onclick({target:stopButton});
+                stopButton.onclick({target:stopButton, immediate:true});
         }
     });
 }

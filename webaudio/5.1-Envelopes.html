@@ -18,6 +18,13 @@
             Envelope
             <div id="envSliders" class="envelopeSliders"></div>
             <div id="sliders"></div>
+            <p id="inverse">
+                Invert:&nbsp;
+                <input type="radio" id="normal" name="invert" value="off">
+                <label for="normal">Off</label>
+                <input type="radio" id="inverted" name="invert" value="on" checked>
+                <label for="inverted">On</label>
+            </p>
         </div>
         <table id="scopes">
         </table>
@@ -26,11 +33,12 @@
     <script>
         'use strict';
         
-        function runEnvelopeApp(envtype, showSpectrum = false)
+        function runEnvelopeApp(envtype, showSpectrum = false, inverse = false)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, envmod);
             config.osc.level = 1;
             config.filter.env = 0.25;
+            config.filter.invert = inverse;
 
             const adOnly = envtype == "ad";
             let finishOff = null;
@@ -42,12 +50,15 @@
             {
                 header.innerHTML = 'The Filter Envelope';
                 const [filterSlider, resSlider] = addStandardFilterSlider("sliders", true);
-                const envSlider = makeSlider("env", "Env amount:", 400, 0, 100, 25, "sliders");
+                const envSlider = makeSlider("env", "Env amount:", 400, 0, 100, inverse ? 100 : 25, "sliders");
             }
             else
             {
                 header.innerHTML = (adOnly ? 'AD' : 'ADSR') + " Amplitude Envelope";
             }
+
+            if (!inverse)
+                document.querySelector('#inverse').style.display = "none";
 
             let playtime = 0;
             function playVoice(type, btn)
@@ -85,9 +96,9 @@
             addButton("buttons", "triangle", (v, btn) => playVoice(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => playVoice(v, btn));
             addButton("buttons", "square", (v, btn) => playVoice(v, btn));
-            addButton("buttons", "stop", (v, btn) => {
-                Synth.allNotesOff(false, () => Scope.setActive(false));
-                if (adOnly || finishOff)
+            addButton("buttons", "stop", (v, btn, immediate) => {
+                // Synth.allNotesOff(false, () => Scope.setActive(false));
+                if (immediate || adOnly || finishOff)
                 {
                     clearTimeout(finishOff);
                     Synth.allNotesOff(true);
@@ -97,6 +108,7 @@
                 }
                 else
                 {
+                    Synth.allNotesOff(false);
                     finishOff = setTimeout(() => {
                         Scope.setActive(false);
                         finishOff = null;
@@ -118,13 +130,19 @@
             Scope.install(cfg, audioCtx, Synth.output);
             
             const [attackSlider, decaySlider, sustainSlider, releaseSlider] = 
-                addADSRSliders("envSliders", envtype == "ad", [30, 60, 75, 50]);
+                addADSRSliders("envSliders", envtype == "ad", [30, 60, 75, inverse ? 20 : 30]);
 
             if (envmod)
             {
                 makeSliderCallback("env", 
                     a => Synth.setFilterEnvAmount(a / 100), true, 
                     v => Number(v), a => a + "%");
+            }
+
+            if (inverse)
+            {
+                document.querySelector("#normal").addEventListener('change', e => config.filter.invert = false);
+                document.querySelector("#inverted").addEventListener('change', e => config.filter.invert = true);
             }
             
             setupParentCommunication();
@@ -133,7 +151,8 @@
         const params = new URLSearchParams(location.search);
         const envmod = params.get('envmod') == 1;
         const envtype = params.get('env');
-        document.addEventListener('DOMContentLoaded', () => runEnvelopeApp(envtype, envmod));
+        const inverse = params.get('inverse') == 1;
+        document.addEventListener('DOMContentLoaded', () => runEnvelopeApp(envtype, envmod, inverse));
     </script>
     </body>
 </html>

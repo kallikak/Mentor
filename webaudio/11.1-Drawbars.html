@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Drawbar Organ</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+
+    <link rel="stylesheet" href="lib/keyboard.css">
+	<script src="lib/keyboard.js"></script>
+
+	<style>
+		.drawbars {
+			display:inline-block;
+			position:relative;
+			left:-60px;
+			height:120px;
+		}
+
+		.tickmark {
+			position:absolute;
+			text-align:right !important;
+		}
+
+		.tick0 { top:0px; }
+		.tick1 { top:13px; }
+		.tick2 { top:26px; }
+		.tick3 { top:39px; }
+		.tick4 { top:52px; }
+		.tick5 { top:65px; }
+		.tick6 { top:78px; }
+		.tick7 { top:91px; }
+		.tick8 { top:104px; }
+
+		.blackbar { background: black; margin: 8px; width: 40px !important; color: white; border: 2px solid #ccc; }
+		.whitebar { background: white; margin: 8px; width: 40px !important; color: black; border: 2px solid #000; }
+		.brownbar { background: brown; margin: 8px; width: 40px !important; color: #ddd; border: 2px solid #000; }
+	</style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Drawbar Organ</div>
+        <div id="controls" class="controls">
+            <div id="drawbars" class="envelopeSliders">
+				<div class="drawbars">
+					<span class="tickmark tick0">Off &mdash;</span>
+					<span class="tickmark tick1">&ndash;</span>
+					<span class="tickmark tick2">&ndash;</span>
+					<span class="tickmark tick3">&ndash;</span>
+					<span class="tickmark tick4">&mdash;</span>
+					<span class="tickmark tick5">&ndash;</span>
+					<span class="tickmark tick6">&ndash;</span>
+					<span class="tickmark tick7">&ndash;</span>
+					<span class="tickmark tick8">Max &mdash;</span>
+				</div>
+			</div>
+            <p>
+        </div>
+        <table id="scopes"></table>
+    </div>
+
+	<script>
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+        const output = audioContext.createGain();
+        output.connect(audioContext.destination);
+		const GAINFACTOR = 1 / 6.0;
+
+		const bars = [
+			{offset: -12, osc: null, gain:audioContext.createGain(), name: "16''", level: 4, slider: null},
+			{offset:   7, osc: null, gain:audioContext.createGain(), name: "5⅓'", level: 0, slider: null},
+			{offset:   0, osc: null, gain:audioContext.createGain(), name: "8'", level: 8, slider: null},
+			{offset:  12, osc: null, gain:audioContext.createGain(), name: "4'", level: 4, slider: null},
+			{offset:  19, osc: null, gain:audioContext.createGain(), name: "2⅔'", level: 0, slider: null},
+			{offset:  24, osc: null, gain:audioContext.createGain(), name: "2'", level: 2, slider: null},
+			{offset:  28, osc: null, gain:audioContext.createGain(), name: "1⅗'", level: 0, slider: null},
+			{offset:  31, osc: null, gain:audioContext.createGain(), name: "1⅓'", level: 0, slider: null},
+			{offset:  36, osc: null, gain:audioContext.createGain(), name: "1'", level: 0, slider: null},
+		]
+
+		const noclickdelay = 20;
+		function stop() {
+			output.gain.setValueAtTime(1, audioContext.currentTime);
+			output.gain.linearRampToValueAtTime(0, audioContext.currentTime + noclickdelay / 1000);
+			setTimeout(() => {
+				bars.forEach(b => {
+					if (b.osc)
+						b.osc.stop();
+					b.osc = null;
+				})
+			}, noclickdelay + 1);
+		}
+
+		const noteToFreq = function(note) 
+		{
+			return 440 * Math.pow(2, (note - 69) / 12);
+		}
+
+		function play(note) {
+			stop();
+			setTimeout(() => {
+				bars.forEach(b => {
+					b.osc = audioContext.createOscillator();
+					b.osc.type = 'sine';
+					b.osc.frequency.value = noteToFreq(note + b.offset);
+					b.gain.gain.setValueAtTime(GAINFACTOR * b.level / 8, audioContext.currentTime);
+					b.osc.start(audioContext.currentTime);
+					b.osc.connect(b.gain);
+					b.gain.connect(output);
+				})
+				output.gain.setValueAtTime(0, audioContext.currentTime);
+				output.gain.linearRampToValueAtTime(1, audioContext.currentTime + noclickdelay / 1000);
+			}, noclickdelay + 1);
+		}
+
+		function addDrawbars(slidersId)
+		{
+			let bar_16, bar_5_1_3, bar8, bar4, bar2_2_3, bar2, bar1_3_5, bar1_1_3, bar1;
+			bars.forEach(b => makeVerticalSlider(b.name, null, 120, 0, 8, 8 - b.level, slidersId));
+			const container = document.getElementById(slidersId);
+			container.appendChild(makeElement("br", null, null));
+			const colourclass = [
+				'brownbar', 'brownbar', 'whitebar', 'whitebar', 'blackbar', 'whitebar', 
+				'blackbar', 'blackbar', 'whitebar'
+			];
+			bars.forEach((b,i) => container.appendChild(makeElement("span", null, colourclass[i], b.name)));
+
+			bars.forEach(b => {
+				b.slider = makeSliderCallback(b.name, u => {
+					b.gain.gain.setValueAtTime(GAINFACTOR * u / 8, audioContext.currentTime);
+					b.level = u;
+				}, false, v => 8 - Number(v), null)
+			});
+		}
+
+        function runDrawbarApp()
+        {
+            let lastnote = null;
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            Keyboard.installKeyboardHTML('controls', 'keyboard', (n, down) => {
+                if (down)
+                {
+                    if (lastnote)
+                        stop();
+                    lastnote = n;
+                    play(lastnote);
+                    Scope.setActive(true);
+                }
+                else
+                {                
+                    if (lastnote)
+                    {
+                        stop();
+                        lastnote = null;
+                    }
+                    Scope.setActive(false);
+                }
+            });
+    
+			addDrawbars("drawbars");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', runDrawbarApp);
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 'use strict';
 
-var Scope = {};
+const Scope = {};
 
 (function(namespace) { 
     let audioCtx;
@@ -320,14 +320,13 @@ var Scope = {};
             var params = Synth.getFilterParams();
             // computedFrequency(t) = frequency(t) * pow(2, detune(t) / 1200)
             var f = params.f * Math.pow(2, params.detune / 1200);
-            if (!magResponse || saveq != params.q || saveco != params.cutoff || 
+            if (!magResponse || saveq != params.q || saveco != params.f || 
                 audioCtx.currentTime - lastoverlayupdate > 0.1)
             {
-                // console.log("Recalc: " + f);
                 namespace.drawFilterCurve(f, params.q, ctx, false, true);
                 lastoverlayupdate = audioCtx.currentTime;
                 saveq = params.q;
-                saveco = params.cutoff;
+                saveco = params.f;
             }
             else
                 namespace.drawFilterCurve(f, params.q, ctx, false, false);

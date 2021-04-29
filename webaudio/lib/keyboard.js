@@ -6,7 +6,61 @@ var Keyboard = {};
 
     context.installKeyboardHTML = function(containerId, keyboardId, callback)
     {
+        const keymap = [
+            { key:'Z', id:'key_48' }, { key:'S', id:'key_49' },
+            { key:'X', id:'key_50' }, { key:'D', id:'key_51' },
+            { key:'C', id:'key_52' }, 
+            { key:'V', id:'key_53' }, { key:'G', id:'key_54' },
+            { key:'B', id:'key_55' }, { key:'H', id:'key_56' },
+            { key:'N', id:'key_57' }, { key:'J', id:'key_58' },
+            { key:'M', id:'key_59' }, 
+            { key:'E', id:'key_60' }, { key:'4', id:'key_61' },
+            { key:'R', id:'key_62' }, { key:'5', id:'key_63' },
+            { key:'T', id:'key_64' }, 
+            { key:'Y', id:'key_65' }, { key:'7', id:'key_66' },
+            { key:'U', id:'key_67' }, { key:'8', id:'key_68' },
+            { key:'I', id:'key_69' }, { key:'9', id:'key_70' },
+            { key:'O', id:'key_71' }, 
+            { key:'P', id:'key_72' }
+        ];
         const container = document.getElementById(containerId);
+        
+        function managekey(keyid, keyel, play)
+        {
+            callback(Number(keyid.substr(4)), play);
+            if (!keyel)
+                keyel = document.getElementById(keyid);
+            if (play)
+                keyel.classList.add('activekey');
+            else
+                keyel.classList.remove('activekey');
+        }
+
+        let curkey = null;
+        document.addEventListener("keydown", function(e) {
+            if (e.repeat)
+                return;
+            if (curkey && callback)
+                managekey(curkey.id, null, false);
+            const key = keymap.find(k => k.key == e.key.toUpperCase());
+            if (key) {
+                curkey = key;
+                const keyid = key.id;
+                if (callback)
+                    managekey(curkey.id, null, true);
+            }
+        });
+        document.addEventListener("keyup", function(e) {
+            const key = keymap.find(k => k.key == e.key.toUpperCase());
+            if (key) {
+                if (key.id === curkey.id)
+                {
+                    if (callback)
+                        managekey(curkey.id, null, false);
+                    curkey = null;
+                }
+            }
+        });
         const kbdDiv = document.createElement('div');
         kbdDiv.setAttribute("id", keyboardId);
         kbdDiv.innerHTML = '<div id="${keyboardId}" class="keyboard-holder">' +
@@ -36,7 +90,7 @@ var Keyboard = {};
             '<div class="white key" id="key_71" style="left: 448px;"></div>' +
             '<div class="white key" id="key_72" style="left: 483px;"></div>';
         container.appendChild(kbdDiv);
-        
+
         // now add the callbacks
         let mousedown = false;
         let candrag = true;
@@ -52,25 +106,21 @@ var Keyboard = {};
             for (var i = 0; i < x.length; i++) 
             {
                 x[i].onpointerdown = (e) => {
-                    callback(Number(e.target.id.substr(4)), true);
-                    e.target.classList.add('activekey');
+                    managekey(e.target.id, e.target, true);
                 };
                 x[i].onpointerup = (e) => {
-                    callback(Number(e.target.id.substr(4)), false);
-                    e.target.classList.remove('activekey');
+                    managekey(e.target.id, e.target, false);
                 };
                 x[i].onpointerleave = (e) => { 
                     if (mousedown) {
-                        callback(Number(e.target.id.substr(4)), false); 
-                        e.target.classList.remove('activekey');
+                        managekey(e.target.id, e.target, false);
                     }
                 };
                 if (candrag)
                 {
                     x[i].onpointerenter = (e) => { 
                         if (mousedown) {
-                            callback(Number(e.target.id.substr(4)), true); 
-                            e.target.classList.add('activekey');
+                            managekey(e.target.id, e.target, true);
                         }
                     };
                 }

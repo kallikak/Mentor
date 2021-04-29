@@ -38,7 +38,7 @@
             audioContext = new AudioContext();
 
             output = audioContext.createGain();
-            Pulse.setupPulseSupport(audioContext);
+            PolyBlepPulse.setupPulseSupport(audioContext);
             output.connect(audioContext.destination);
             setupInterface();
         }
@@ -47,7 +47,7 @@
         {
             makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
             makeSlider("amp", "Amplitude:", 400, 0, 100, 50, "sliders");
-            makeSlider("pw", "Pulse Width:", 400, 50, 100, 50, "sliders");
+            makeSlider("pw", "Pulse Width:", 400, 0, 100, 0, "sliders");
 
             addButton("buttons", "play", (v, btn) => {
                 if (pulse)
@@ -64,6 +64,7 @@
             addButton("buttons", "stop", (v, btn) => {
                 if (!pulse)
                     return;
+                pulse.disconnect();
                 pulse.stop();
                 pulse = null;
                 Scope.setActive(false);
@@ -81,11 +82,7 @@
                 f => {
                     if (pulse)
                     {
-                        const w = Number(pwSlider.value);
-                        const dt = (w / 100) / f;
-                        pulse.frequency.value = f;
-                        pulse.delay.setValueAtTime(dt, audioContext.currentTime);
-                        pulse.width.value = w / 100;
+                        pulse.frequency.setValueAtTime(f, audioContext.currentTime);
                     }
                 }, true, 
                 v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
@@ -96,11 +93,9 @@
                 w => {
                     if (pulse)
                     {
-                        const dt = (w/ 100) / pulse.frequency.value;
-                        pulse.width.setValueAtTime(w / 100, audioContext.currentTime);
-                        pulse.delay.setValueAtTime(dt, audioContext.currentTime);
+                        pulse.width.setValueAtTime(0.5 + w / 100 / 2, audioContext.currentTime);
                     }
-                }, true, v => Number(v), w => w.toFixed(0) + "Hz");
+                }, true, v => Number(v), w => w.toFixed(0) + "%");
             
 
             setupParentCommunication();

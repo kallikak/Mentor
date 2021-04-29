@@ -29,7 +29,7 @@
 
         function runSynthApp(showScope = false, addReverb = false, addDistortion = false)
         {
-            const config = Config.setEnvelope(Config.getDefault(), 0.025, 1, 1, 0.15, true, true);
+            const config = Config.setEnvelope(Config.getDefault(), 0.025, 1, 1, 0.05, true, true);
             config.volume = 0.75;
             let audioCtx = Synth.initAudio(config);
             

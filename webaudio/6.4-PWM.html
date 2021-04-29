@@ -30,7 +30,6 @@
         let pulse;
         let lfo;
         let lfoGain;
-        let delayGain;
 
         const noteToFreq = function(note) 
         {
@@ -43,7 +42,7 @@
             audioContext = new AudioContext();
 
             output = audioContext.createGain();
-            Pulse.setupPulseSupport(audioContext);
+            PolyBlepPulse.setupPulseSupport(audioContext);
             output.connect(audioContext.destination);
             setupInterface();
         }
@@ -51,7 +50,7 @@
         function setupInterface()
         {
             makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
-            makeSlider("lfo", "LFO Rate:", 400, 1, 40, 2, "sliders");
+            makeSlider("lfo", "LFO Rate:", 400, 1, 40, 1, "sliders");
             makeSlider("pwm", "PWM Amount:", 400, 0, 100, 0, "sliders");
 
             function play(type, btn)
@@ -67,13 +66,9 @@
                 lfo.type = type;
                 lfo.start();
                 lfoGain = audioContext.createGain();
-                lfoGain.gain.value = 0.5;
+                lfoGain.gain.value = 0;
                 lfo.connect(lfoGain);
                 lfoGain.connect(pulse.width);
-                delayGain = audioContext.createGain();
-                delayGain.gain.value = 1 / pulse.frequency.value;
-                lfoGain.connect(delayGain);
-                delayGain.connect(pulse.delay);
                 pitchSlider.oninput();
                 lfoSlider.oninput();
                 pwmSlider.oninput();
@@ -82,7 +77,7 @@
             }
 
             addButton("buttons", "sine", (v, btn) => play(v, btn));
-            addButton("buttons", "triangle", (v, btn) => play(v, btn), ["bluebutton", "bluebuttonpressed"]);
+            addButton("buttons", "triangle", (v, btn) => play(v, btn));
             addButton("buttons", "square", (v, btn) => play(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => play(v, btn));
             addButton("buttons", "stop", (v, btn) => {
@@ -98,13 +93,13 @@
                 }
                 Scope.setActive(false);
                 manageButtonState(btn);
-            });
+            }, ["bluebutton", "bluebuttonpressed"]);
 
             const cfg = Scope.getConfigTemplate();
             cfg.scopeId = 'scopeCanvas';
-            cfg.spectrumId = 'spectrumCanvas';
+            cfg.spectrumId = null;//'spectrumCanvas';
             cfg.fftSize = 4096;
-            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [800, 0, 0], 200);
             Scope.install(cfg, audioContext, output);
                 
             const pwmSlider = makeSliderCallback("pwm", 
@@ -117,10 +112,8 @@
                 f => {
                     if (pulse)
                     {
-                        pulse.frequency.value = f;
-                        pulse.delay.setValueAtTime(0.5 / f, audioContext.currentTime);
-                        pulse.width.value = 0.5;
-                        delayGain.gain.value = 1 / pulse.frequency.value;
+                        pulse.frequency.setValueAtTime(f, audioContext.currentTime);
+                        // pulse.width.value = 0.5;
                     }
                 }, true, 
                 v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
@@ -128,9 +121,9 @@
             const lfoSlider = makeSliderCallback("lfo", 
                 a => {
                     if (lfo) 
-                        lfo.frequency.value = a / 2
+                        lfo.frequency.setValueAtTime(a / 2, audioContext.currentTime);
                 }, true,
-                v => Number(v), a => (a / 2) + "Hz");
+                v => Number(v), a => a / 2 + "Hz");
 
             setupParentCommunication();
         }

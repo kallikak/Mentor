@@ -130,8 +130,8 @@ https://github.com/mdn/webaudio-examples/blob/master/step-sequencer/index.html
                 playnote(index++);
                 manageButtonState(btn, true);
             });
-            addButton("buttons", "stop", (v, btn) => {
-                Synth.allNotesOff();
+            addButton("buttons", "stop", (v, btn, immediate) => {
+                Synth.allNotesOff(immediate);
                 clearTimeout(timer);
                 manageButtonState(btn, true);
             }, ["bluebutton", "disabled"]);

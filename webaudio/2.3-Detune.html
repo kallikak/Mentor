@@ -93,8 +93,8 @@
             addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
             addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
-            addButton("buttons", "stop", (v, btn) => {
-                Synth.allNotesOff();
+            addButton("buttons", "stop", (v, btn, immediate) => {
+                Synth.allNotesOff(immediate);
                 Scope.setActive(false);
                 manageButtonState(btn);
             });

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Wavetable Synthesis</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/FFT.js"></script>
+
+    <link rel="stylesheet" href="lib/keyboard.css">
+	<script src="lib/keyboard.js"></script>
+	<style>
+		#canvas {
+			border: solid 2pt black;
+			display: block;
+			margin: 20px auto;
+			width: 512px;
+			height: 200px;
+			touch-action: none;
+		}
+	</style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Wavetable Synthesis</div>
+        <div id="controls" class="controls">
+            Draw waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+			&nbsp;
+			&nbsp;
+			&nbsp;
+            <span class="buttons" id="smoothbutton"></span>
+            <p>
+            <div id="sliders"></div>
+            <p>
+			<canvas id="canvas"></canvas>
+        </div>
+        <table id="scopes"></table>
+    </div>
+
+	<script>
+		const canvas = document.getElementById("canvas");
+		const h = 200;
+		const w = 512;
+		canvas.height = h;
+		canvas.width = w;
+		const ctx = canvas.getContext("2d");
+		// 	ctx.scale(2, 2);
+
+		let last = null;
+		let pts = new Array(256).fill(0);
+		const bg = 'white';
+		const fg = 'red';
+
+		// last known position
+		let pos = {
+			x: 0,
+			y: 0
+		};
+
+		canvas.addEventListener('pointerleave', handleUp);
+		canvas.addEventListener('pointerup', handleUp);
+		canvas.addEventListener('pointerdown', handleDown);
+		canvas.addEventListener('pointermove', draw);
+		// 	canvas.addEventListener('pointerenter', setMousePos);
+
+		clear();
+
+		// update position from mouse event
+		function setMousePos(e) {
+			var rect = canvas.getBoundingClientRect();
+			pos = {
+				x: Math.min(e.clientX, rect.left + w) - rect.left,
+				y: h - (Math.min(e.clientY, rect.top + h) - rect.top)
+			};
+		}
+
+		function handleDown(e) {
+			setMousePos(e);
+		}
+
+		function handleUp(e) {
+			last = null;
+		}
+
+		function clear() {
+			ctx.fillStyle = bg;
+			ctx.fillRect(0, 0, w, h);
+			pts = new Array(256).fill(0);
+			redraw();
+		}
+
+		function redraw() {
+			ctx.fillStyle = bg;
+			ctx.fillRect(0, 0, w, h);
+			axis(0, w);
+			ctx.beginPath(); // begin
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = fg;
+			ctx.moveTo(0, pt2y(pts[0]));
+			for (let i = 0; i < 256; ++i)
+				ctx.lineTo(2 * i, pt2y(pts[i]));
+			ctx.stroke(); // draw it!
+		}
+
+		function sine() {
+			pts = pts.map((v, i) => Math.sin(2 * Math.PI * i / pts.length + Math.PI));
+			redraw();
+		}
+
+		function square() {
+			pts = pts.map((v, i) => i < pts.length / 2 ? 1 : -1);
+			redraw();
+		}
+
+		function triangle() {
+			pts = pts.map((v, i) => 2 * Math.abs(1 - 2 * i / pts.length) - 1);
+			redraw();
+		}
+
+		function sawtooth() {
+			pts = pts.map((v, i) => 1 - 2 * i / pts.length);
+			redraw();
+		}
+
+		function pt2y(p) {
+			return h / 2 * (p + 1);
+		}
+
+		function segment(i, col) {
+			if (i < 0 || i > pts.length - 2)
+				return;
+			ctx.beginPath();
+			ctx.fillStyle = null;
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = col;
+			ctx.moveTo(2 * i, pt2y(pts[i]));
+			ctx.lineTo(2 * i + 2, pt2y(pts[i + 1]));
+			ctx.stroke();
+		}
+
+		function axis(x1, x2) {
+			ctx.beginPath();
+			ctx.fillStyle = null;
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = '#555';
+			ctx.moveTo(x1, h / 2);
+			ctx.lineTo(x2, h / 2);
+			ctx.stroke();
+		}
+
+		function draw(e) {
+			// mouse left button must be pressed
+			if (e.buttons != 1)
+				return;
+
+			setMousePos(e);
+			interpolate();
+		}
+
+		function interpolate() {
+			let i = Math.min(255, Math.max(0, Math.round(pos.x / 2)));
+			let j = last ? Math.round(last.x / 2) : i;
+			j = Math.min(255, Math.max(0, j));
+			pts[i] = 1 - 2 * pos.y / h;
+			if (j < i)
+				[i, j] = [j, i];
+			let d = j == i ? 0 : (pts[j] - pts[i]) / (j - i);
+			for (let k = i + 1; k < j; ++k) {
+				const save = pts[k];
+				pts[k] = pts[i] + d * (k - i);
+			}
+			last = pos;
+
+			let m = 2 * i - 2;
+			const n = 2 * j + 2;
+
+			ctx.fillStyle = bg;
+			ctx.fillRect(m, 0, n - m, h);
+			axis(m, n);
+
+			i--;
+			j++;
+			while (i <= j) {
+				segment(i++, fg);
+			}
+		}
+	
+		function smooth(a, r) {
+			const result = [];
+			const n = a.length;
+			for (i = 0; i < n; i++) { 
+				let sum = 0; 
+				for (ix = i - r; ix <= i + r; ix++) { 
+					var jx = ix < 0 ? ix + n : ix % n; 
+					sum += a[jx]; 
+				}
+				result[i] = sum / (2 * r + 1); 
+			} 
+			return result; 
+		}
+
+		function scale() {
+			let max = pts[0];
+			let min = pts[0];
+			pts.forEach(p => {
+				if (p > max)
+					max = p;
+				if (p < min)
+					min = p;
+			});
+			// need
+			// 	min * scale + shift = -1
+			// 	max * scale + shift = +1
+			// (max - min) * scale = 2 => scale = 2 / (max - min)
+			// shift = min * 2 / (max - min) + 1 = min * scale + 1
+			const scale = min == max ? 0 : 2 / (max - min);
+			const shift = min == max ? 0 : 1 - max * scale;
+			pts = pts.map(p => scale * p + shift);
+		}
+
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+		let osc = null;
+        const output = audioContext.createGain();
+        output.connect(audioContext.destination);
+
+		const noclickdelay = 5;
+		function stop() {
+			if (osc) {
+				output.gain.setValueAtTime(1, audioContext.currentTime);
+				output.gain.linearRampToValueAtTime(0, audioContext.currentTime + noclickdelay / 1000);
+				setTimeout(() => {
+					if (osc)
+						osc.stop();
+					osc = null;
+				}, noclickdelay + 1);
+			}
+		}
+        
+        const N = 256;
+        const fft = FFT(N);
+        const real = new Float32Array(N);
+        const imag = new Float32Array(N);
+
+		function play(freq) {
+			stop();
+			scale();
+			redraw();
+
+			for (let i = 0; i < N; i++) {
+				real[i] = pts[i];
+				imag[i] = 0;
+			}
+			fft.fft(imag, real);
+			setTimeout(() => {
+				var wave = audioContext.createPeriodicWave(real, imag);
+				if (osc)
+					osc.stop();	// just incase
+				osc = audioContext.createOscillator();
+				osc.setPeriodicWave(wave);
+				osc.frequency.value = freq;
+				osc.start(audioContext.currentTime);
+				output.gain.setValueAtTime(0, audioContext.currentTime);
+				output.gain.linearRampToValueAtTime(1, audioContext.currentTime + noclickdelay / 1000);
+				osc.connect(output);
+			}, noclickdelay + 2);
+		}
+	</script>
+
+    <script>
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+
+        function runWavetableApp()
+        {
+            let lastnote = null;
+
+            function selectType(t, btn)
+            {
+                switch (t)
+                {
+                    case "sine":
+                        sine();
+                        break;
+                    case "triangle":
+                        triangle();
+                        break;
+                    case "square":
+                        square();
+                        break;
+                    case "sawtooth":
+                    sawtooth();
+                        break;
+                }
+                manageButtonState(btn, false);
+            }
+
+            addButton("buttons", "sine", (v, btn) => selectType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => selectType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => selectType(v, btn));
+            addButton("buttons", "square", (v, btn) => selectType(v, btn));
+            addButton("smoothbutton", "smooth", () => { pts = smooth(smooth(pts, 3), 3); redraw(); });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            Keyboard.installKeyboardHTML('controls', 'keyboard', (n, down) => {
+                if (down)
+                {
+                    if (lastnote)
+                        stop();
+                    lastnote = n + shift;
+                    play(noteToFreq(lastnote));
+                    Scope.setActive(true);
+                }
+                else
+                {                
+                    if (lastnote)
+                    {
+                        stop();
+                        lastnote = null;
+                    }
+                    Scope.setActive(false);
+                }
+            });
+
+            let shift = 0;
+            makeSlider("range", "Range:", 320, 0, 5, shift + 2, "sliders");
+            const rangeSlider = makeSliderCallback("range", 
+                r => shift = 12 * (r - 2), true, 
+                v => Number(v), i => [32, 16, 8, 4, 2, 1][i] + "'");
+    
+            setupParentCommunication();
+        }
+
+        const params = new URLSearchParams(location.search);
+        document.addEventListener('DOMContentLoaded', runWavetableApp);
+    </script>
+</body>
+</html>

@@ -64,8 +64,8 @@
 
             addButton("buttons", "play", (v, btn) => playSineSum(terms, 30, btn));
             addButton("buttons", "sawtooth", (v, btn) => playSineSum(-1, 30, btn));
-            addButton("buttons", "stop", (v, btn) => {
-                Synth.allNotesOff();
+            addButton("buttons", "stop", (v,btn, immediate) => {
+                Synth.allNotesOff(immediate);
                 Scope.setActive(false);
                 manageButtonState(btn);
             });

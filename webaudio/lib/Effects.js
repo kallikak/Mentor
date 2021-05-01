@@ -1,6 +1,6 @@
 'use strict';
 
-var Noise = {};
+const Noise = {};
 
 (function(namespace) { 
     

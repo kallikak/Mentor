@@ -78,6 +78,31 @@ AudioAnalyzePeak         TestPeak;       //xy=1997.000244140625,165.333335876464
 AudioConnection          patchCord47(LevelL, TestPeak);
 // GUItool: end automatically generated code
 
+// 16 voices => 4 mixers for each voice output
+// and then 4 env go to envCombine, 4 raw go to rawCombine
+// and the two outputs go to AmpMix
+
+// Do it statically because of some question marks over the audio library's handling of dynamically created connection objects...
+
+AudioMixer4 env1, env2, env3, env4;
+AudioMixer4 raw1, raw2, raw3, raw4;
+AudioMixer4 envMix[4] = {env1, env2, env3, env4};
+AudioMixer4 rawMix[4] = {raw1, raw2, raw3, raw4};
+AudioMixer4 envCombine;
+AudioMixer4 rawCombine;
+
+AudioConnection          patchCord50(env1, 0, envCombine, 0);
+AudioConnection          patchCord51(env2, 0, envCombine, 1);
+AudioConnection          patchCord52(env3, 0, envCombine, 2);
+AudioConnection          patchCord53(env4, 0, envCombine, 3);
+AudioConnection          patchCord54(raw1, 0, rawCombine, 0);
+AudioConnection          patchCord55(raw2, 0, rawCombine, 1);
+AudioConnection          patchCord56(raw3, 0, rawCombine, 2);
+AudioConnection          patchCord57(raw4, 0, rawCombine, 3);
+
+AudioConnection          patchCord58(envCombine, 0, AmpMix, 0);
+AudioConnection          patchCord59(rawCombine, 0, AmpMix, 2);
+    
 float v = 0;
 void monitorPeak()
 {
@@ -98,36 +123,12 @@ void monitorPeak()
 #include "Voice.h"
 #include "Utility.h"
 
+// I have removed support for 32 voices though some of the code below remains a little more complex
+// because of the history.
+// 16 voices is much easier to manage sonically.
 Synth::Synth()
 {
-  int i, j, k, l;
-
-  // create the mixers
-  i = j = k = 0;
-  for (i = 0; i < COMBINEMIXERS; ++i)
-  {
-    envCombine[i] = new AudioMixer4();
-    rawCombine[i] = new AudioMixer4();
-    for (j = 0; j < 4; ++j)
-    {
-      k = i * 4 + j;
-      envMix[k] = new AudioMixer4();
-      rawMix[k] = new AudioMixer4();
-      new AudioConnection(*envMix[k], 0, *envCombine[i], j);
-      new AudioConnection(*rawMix[k], 0, *rawCombine[i], j);
-      envCombine[i]->gain(j, 0.25);
-      rawCombine[i]->gain(j, 0.25);
-      for (l = 0; l < 4; ++l)
-      {
-        envMix[k]->gain(l, 0.25);
-        rawMix[k]->gain(l, 0.25);
-      }
-    }
-    new AudioConnection(*envCombine[i], 0, AmpMix, i);
-    AmpMix.gain(i, 0.5);
-    new AudioConnection(*rawCombine[i], 0, AmpMix, i + 2);
-    AmpMix.gain(i + 2, 0.0); 
-  }
+  int i;
   
   for (i = 0; i < POLYPHONY; ++i)
   {
@@ -135,25 +136,30 @@ Synth::Synth()
     voice[i]->setupMod(&LFOPitch, &LFOFilter, &FilterEnvAmt);
     int m = (int)(i / 4);
     int n = i % 4;
-    // voices 1-4 connect to envMix 1 inputs 1-4
-    // voices 5-8 connect to envMix 2 inputs 1-4
-    // ...
-    // voices 29-32 connect to envMix 8 inputs 1-4
-    voice[i]->connectOutputs(envMix[m], n, rawMix[m], n);
+    // voices 1-4 connect to envMix/rawMix 1 inputs 1-4
+    // voices 5-8 connect to envMix/rawMix 2 inputs 1-4
+    // voices 9-12 connect to envMix/rawMix 3 inputs 1-4
+    // voices 13-16 connect to envMix/rawMix 4 inputs 1-4
+    voice[i]->connectOutputs(&envMix[m], n, &rawMix[m], n);
+    
+    envMix[m].gain(n, 0.25);
+    rawMix[m].gain(n, 0.25);
   }
   
   AudioMemory(600);
   for (i = 0; i < 4; ++i)
   {
+    envCombine.gain(i, 0.25);
+    rawCombine.gain(i, 0.25);
     EffectMixL.gain(i, 0);
     EffectMixR.gain(i, 0);
   }
-  HPFPreamp.gain(0.3);
+  HPFPreamp.gain(1);
   HPF.frequency(0);
   HPF.resonance(0);
   LFOAmpMix.gain(0, 0);
   LFOAmpMix.gain(1, 0.5);
-  EffectsPreamp.gain(0.5);
+  EffectsPreamp.gain(1);
   FinalMixL.gain(0, 0.5);
   FinalMixL.gain(1, 0.5);
   FinalMixR.gain(0, 0.5);
@@ -193,9 +199,10 @@ Synth::Synth()
   calcDetunings();
   
   sgtl5000.enable();
-  sgtl5000.volume(0.7);
+  sgtl5000.volume(0.5);
   sgtl5000.enhanceBassEnable();
   sgtl5000.autoVolumeControl(0,2,0,-18.0,200,2000);  //maxGain,response,hard limit,threshold,attack, decay
+  sgtl5000.autoVolumeEnable();
 }
 
 Synth::~Synth()
@@ -334,18 +341,10 @@ void Synth::calcDetunings()
 {
   int maxcents = config->osc.detune;
   int unison = getUnison(config->osc.poly);
-  float delta1 = 2.0 * maxcents / (unison - 1);
-  float delta2 = 2.0 * maxcents / (unison - 2);
+  float delta = 2.0 * maxcents / (unison - 1);
   for (int i = 0; i < unison; ++i)
   {
-    if (unison == 1)
-      detunings[i] = 0;
-    else if (unison == 2)
-      detunings[i] = i * delta1 - maxcents;
-    else if (i % 2 == 1)
-      detunings[i] = (i - 1) * delta2 - maxcents;
-    else
-      detunings[i] = i * delta2 - maxcents;
+    detunings[i] = unison == 1 ? 0 : i * delta - maxcents;
 #if DEBUG_SERIAL
     char str[100];
     sprintf(str, "\n\tmaxcents: %d, voice: %d/%d, result: %.2f", maxcents, i, unison, detunings[i]);
@@ -488,7 +487,10 @@ void Synth::setLFORate(ccInt u)
 // f(127) = 40Hz
 // f(x) = Math.exp(x / 25) / 4
 // ?+ 100{]_,E^(_/25) / 4}
-  float f = exp(u / 25.0) / 2.0;
+//   float f = exp(u / 25.0) / 2.0;
+// # Exp ([0 64 127]/19) / 10
+// [ 1/10 2.9032649822423 79.967910329469 ]
+  float f = exp(u / 19.0) / 10.0;
   setLFOFrequency(f, false);
 }
 
@@ -536,16 +538,12 @@ void Synth::setGain(ccInt u)
 {
   float rawGain = constrainCC(u) / 127.0 / 2;
   AmpMix.gain(2, rawGain);
-  if (POLYPHONY == 32)
-    AmpMix.gain(3, rawGain);
 }
 
 void Synth::setAmpEnvAmt(ccInt u)
 {
   float envGain = constrainCC(u) / 127.0 / 2;
   AmpMix.gain(0, envGain);
-  if (POLYPHONY == 32)
-    AmpMix.gain(1, envGain);
 }
 
 void Synth::setAmpLFOAmt(ccInt u)
@@ -599,7 +597,7 @@ void Synth::adjustLevelForEffects()
   }
 }
 
-#define LEVEL_SCALE 50
+#define LEVEL_SCALE 30
 
 void Synth::setVolume(int u)
 {

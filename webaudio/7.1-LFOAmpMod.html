@@ -7,16 +7,23 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
-
+    <style>
+        .buttonHeader {
+            width:160px;
+            text-align:right;
+            display:inline-block;
+        }
+    </style>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">LFO Amplitude Modulation</div>
         <div class="controls">
-            Select waveform:&nbsp;
-            <span class="buttons" id="buttons"></span>
-            <p>
+            <span class="buttonHeader">Waveform:</span>&nbsp;
             <span class="buttons2" id="buttons2"></span>
+            <p>
+            <span class="buttonHeader">Modulating waveform:</span>&nbsp;
+            <span class="buttons" id="buttons"></span>
             <p>
             <div id="sliders"></div>
         </div>
@@ -55,6 +62,7 @@
                 amtSlider.oninput();
                 lfoSlider.oninput();
                 Scope.setActive(true);
+                manageButtonState(btn, false, "buttons2");
             }
 
             const [pitchSlider, ampSlider] = addStandardPitchSlider("sliders", true);
@@ -66,10 +74,14 @@
             addButton("buttons", "square", (v, btn) => setLFOType(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => setLFOType(v, btn));
             addButton("buttons", "ramp", (v, btn) => setLFOType(v, btn));
-            addButton("buttons2", "play", (v, btn) => playWaveType(config.lfo.shape, btn));
+            addButton("buttons2", "sine", (v, btn) => playWaveType('sine', btn));
+            addButton("buttons2", "triangle", (v, btn) => playWaveType('triangle', btn));
+            addButton("buttons2", "sawtooth", (v, btn) => playWaveType('sawtooth', btn));
+            addButton("buttons2", "square", (v, btn) => playWaveType('square', btn));
             addButton("buttons2", "stop", (v, btn) => {
                 Synth.allNotesOff();
                 Scope.setActive(false);
+                manageButtonState(btn, false, "buttons2");
             });
 
             const cfg = Scope.getConfigTemplate();
@@ -93,7 +105,6 @@
             setupParentCommunication();
         }
 
-        const params = new URLSearchParams(location.search);
         document.addEventListener('DOMContentLoaded', () => runLFOModApp());
     </script>
     </body>

@@ -15,8 +15,8 @@
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
-            <span id="effectlabel">Current effect:</span>
-            <button class="bluebutton" id="effectbtn">Chorus</button>
+            Select effect:&nbsp;
+            <span class="buttons" id="effectbuttons"></span>
             <p></p>
             <div id="sliders"></div>
         </div>
@@ -31,15 +31,12 @@
         const FLANGER = 1;
         const PHASER = 2;
 
-        const EFFECT_NAMES = ["Chorus", "Flanger", "Phaser"];
-        const EFFECT_NODES = [];
-
         let audioContext;
         let tuna;
         let output;
         let wetGain;
         let dryGain;
-        let effect = 0;
+        let effect = CHORUS;
         let effectNode = null;
         let note;
 
@@ -48,8 +45,9 @@
             return 440 * Math.pow(2, (note - 69) / 12);
         }
 
-        function updateEffect()
+        function updateEffect(i, btn)
         {
+            effect = i;
             if (effectNode)
                 effectNode.stop();
             if (note)
@@ -68,6 +66,8 @@
             }
             if (note)
                 note.connect(dryGain);
+            if (btn)
+                manageButtonState(btn, false, "effectbuttons");
         }
             
         function runEffectApp()
@@ -97,15 +97,15 @@
             {
                 if (note)
                 {
-                    note.stop();
                     note.disconnect();
+                    note.stop();
                 }
                 note = audioContext.createOscillator();
                 note.type = type;
                 note.frequency.value = noteToFreq(55);
                 note.connect(dryGain);
                 note.start();
-                updateEffect();
+                updateEffect(effect, null);
                 
                 pitchSlider.oninput();
                 effectSlider.oninput();
@@ -121,19 +121,19 @@
             addButton("buttons", "stop", (v, btn) => {
                 if (note) 
                 {
-                    note.stop();
                     effectNode.disconnect();
                     note.disconnect();
+                    note.stop();
+                    note = null;
                 }
                 Scope.setActive(false);
                 manageButtonState(btn);
             });
 
-            document.getElementById("effectbtn").onclick = e => {
-                effect = ++effect % 3;
-                updateEffect();
-                document.getElementById("effectbtn").innerText = EFFECT_NAMES[effect];
-            }
+            addButton("effectbuttons", "Chorus", (v, btn) => updateEffect(CHORUS, btn), 
+                ["bluebutton", "bluebuttonpressed"]);
+            addButton("effectbuttons", "Flanger", (v, btn) => updateEffect(FLANGER, btn));
+            addButton("effectbuttons", "Phaser", (v, btn) => updateEffect(PHASER, btn));
 
             const cfg = Scope.getConfigTemplate();
             cfg.scopeId = 'scopeCanvas';

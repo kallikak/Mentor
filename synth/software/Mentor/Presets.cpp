@@ -89,7 +89,7 @@ mentor_config preset8 = {
 };
 
 mentor_config preset9 = {
-  {49, RANGE8FT, POLY8, 7},
+  {100, RANGE8FT, POLY8, 7},
   {100, 70, 63, 0},
   {105, 36, 92, 100},
   {SINE, 0, 0, 0},

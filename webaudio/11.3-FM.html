@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>FM Synthesis</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Effects.js"></script>
+
+    <style>
+        .controlLabel {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">FM Synthesis</div>
+        <div class="controls">
+            <span class="buttons" id="buttons"></span>
+            <p>
+            Modulator waveshape:&nbsp;
+            <input type="radio" id="sine" name="modwave" value="sine" checked onclick="updatemodwave(this);">
+            <label for="sine">Sine</label>
+            <input type="radio" id="sawtooth" name="modwave" value="sawtooth" onclick="updatemodwave(this);">
+            <label for="sawtooth">Sawtooth</label>
+            <p></p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+    <script>
+        'use strict';
+        
+        let audioContext;
+        let output;
+        let modulator = null;
+        let carrier = null;
+        let modGain = null;
+        let carGain = null;
+        let ratio = 1;
+        let fine = 0;
+
+        function updatemodwave(e)
+        {
+            modulator.type = e.id;
+        }
+
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+
+        function calcDetune(f, c)
+        {
+            if (c == 0)
+                return f;
+            return f * Math.pow(2, -c / 1200);
+        }
+        
+        function createAlgorithm()
+        {
+            carrier = audioContext.createOscillator();
+            modulator = audioContext.createOscillator();
+
+            carrier.type = 'sine';
+            modulator.type = 'sine';
+
+            modGain.gain.value = 0;
+            carrier.frequency.value = 262;
+            modulator.frequency.value = 262;
+
+            modulator.connect(modGain);
+            modGain.connect(carrier.frequency);
+
+            carrier.connect(carGain);   
+            carGain.connect(output);
+        }
+
+        function updateModFreq()
+        {
+            if (!carrier)
+                return;
+            let freq = carrier.frequency.value * ratio;
+            modulator.frequency.setValueAtTime(calcDetune(freq, fine), audioContext.currentTime);
+        }
+
+        function setRatio(n) 
+        {
+            ratio = Math.pow(2, n);
+            updateModFreq();
+        }
+
+        function setFineAdjust(f)
+        {
+            fine = f;
+            updateModFreq();
+        }
+            
+        function runFMApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+            
+            modGain = audioContext.createGain();
+            carGain = audioContext.createGain();
+
+            output = audioContext.createGain();
+            output.gain.value = 0.5;
+            output.connect(audioContext.destination);
+
+            setupInterface();
+        }
+
+        function setupInterface()
+        {
+            makeSlider("modlevel", "Modulator level:", 400, 0, 100, 0, "sliders");
+            makeSlider("carlevel", "Carrier level:", 400, 0, 100, 50, "sliders");
+            makeSlider("carfreq", "Carrier frequency:", 400, 3000, 10300, 6900, "sliders");
+            makeSlider("ratio", "Harmonic ratio:", 400, -7, 5, 0, "sliders");
+            makeSlider("fine", "Fine adjust:", 400, -120, 120, 0, "sliders");
+
+            function play(btn)
+            {
+                createAlgorithm();
+                
+                modulator.start();
+                carrier.start();
+
+                modSlider.oninput();
+                carSlider.oninput();
+                freqSlider.oninput();
+                ratioSlider.oninput();
+                fineSlider.oninput();
+
+                updateModFreq();
+
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+            addButton("buttons", "start", (v, btn) => play(btn));
+            addButton("buttons", "stop", (v, btn) => {
+                if (!modulator)
+                    return;
+                modGain.disconnect();
+                carGain.disconnect();
+                modulator.stop();
+                carrier.stop();
+
+                modulator = null;
+                carrier = null;
+
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 8192;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, output);
+            
+            const modSlider = makeSliderCallback("modlevel", 
+                u => modGain.gain.setValueAtTime(u, audioContext.currentTime), true, 
+                v => 5 * v, u => (u / 5).toFixed(0) + "%");
+            const carSlider = makeSliderCallback("carlevel", 
+                u => carGain.gain.setValueAtTime(u, audioContext.currentTime), true, 
+                v => v / 100, u => (u * 100).toFixed(0) + "%");
+            const freqSlider = makeSliderCallback("carfreq", 
+                f => {
+                        if (carrier)
+                        {
+                            carrier.frequency.value = f;
+                            updateModFreq();
+                        }
+                    }, true, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+            const ratioSlider = makeSliderCallback("ratio", 
+                u => setRatio(u), true, 
+                v => v, l => l < 0 ? 1 + "/" + Math.pow(2, -l) : Math.pow(2, l));
+            const fineSlider = makeSliderCallback("fine", 
+                u => setFineAdjust(u), true, 
+                v => 5 * v, l => l  + "c");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runFMApp());
+    </script>
+    </body>
+</html>

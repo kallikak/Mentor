@@ -95,7 +95,7 @@ Voice::Voice()
   mix->gain(1, 1.0);
   mix->gain(2, 0.0);
   mix->gain(3, 0.0);
-  filterPreamp->gain(0.25);
+  filterPreamp->gain(0.15);
   filterModMix->gain(0, 0.5);
   filterModMix->gain(1, 0.5);
   filter->octaveControl(4);
@@ -320,6 +320,7 @@ void Voice::releaseNote()
 void Voice::stopNote()
 {
   env->release(1);
+  raw->release(1);
   filterEnv->release(1);
   releaseNote();
   setRelease(config->env.release);
@@ -327,7 +328,8 @@ void Voice::stopNote()
 
 bool Voice::isActive()
 {
-  return config->amp.envAmt > 0 && env->isActive();
+  return (config->amp.envAmt > 0 && env->isActive()) || 
+    (config->amp.gain > 0 && raw->isActive());
 }
 
 bool Voice::isReleased()

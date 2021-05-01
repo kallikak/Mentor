@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Ring Modulation</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <style>
+        .buttonHeader {
+            width:160px;
+            text-align:right;
+            display:inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Ring Modulation</div>
+        <div class="controls">
+            <span class="buttonHeader">Waveform:</span>&nbsp;
+            <span class="buttons2" id="buttons2"></span>
+            <p>
+            <span class="buttonHeader">Modulating waveform:</span>&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p>
+            <div id="sliders"></div>
+        </div>
+        <table id="scopes">
+        </table>
+    </div>
+
+    <script>
+        'use strict';
+        
+        const noteToFreq = function(note) 
+        {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+        
+        function runRingModApp()
+        {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioContext = new AudioContext();
+
+            let carrier = null;
+            let modulator = null;
+            let mixNode = audioContext.createGain();
+            let modtype = 'sine';
+
+            mixNode.gain.value = 0;
+            mixNode.connect(audioContext.destination);
+
+            function setCarrierType(type, btn)
+            {
+                if (carrier)
+                    carrier.type = type;
+                manageButtonState(btn, false, "buttons2");
+            }
+
+            function setModType(type, btn)
+            {
+                modtype = type;
+                if (modulator)
+                    modulator.type = type;
+                manageButtonState(btn, false, "buttons");
+            }
+
+            function setCarrierFrequency(f)
+            {
+                if (carrier)
+                    carrier.frequency.setValueAtTime(f, audioContext.currentTime);
+            }
+
+            function setModFrequency(f)
+            {
+                if (modulator)
+                    modulator.frequency.setValueAtTime(f, audioContext.currentTime);
+            }
+
+            function playWaveType(type, btn)
+            {
+                if (!modulator)
+                {
+                    carrier = audioContext.createOscillator();
+                    modulator = audioContext.createOscillator();
+                    carrier.connect(mixNode.gain);
+                    modulator.connect(mixNode);
+                    carrier.start();
+                    modulator.start();
+                    modulator.type = modtype;
+                }
+                setCarrierType(type, btn);
+                pitchSlider.oninput();
+                modSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn, false, "buttons2");
+            }
+
+            makeSlider("pitch", "Pitch:", 400, 3000, 10300, 8500, "sliders");
+            makeSlider("mod", "Mod Rate:", 400, 1, 600, 50, "sliders");
+
+            addButton("buttons", "sine", (v, btn) => setModType(v, btn), ["bluebutton", "bluebuttonpressed"]);
+            addButton("buttons", "triangle", (v, btn) => setModType(v, btn));
+            addButton("buttons", "square", (v, btn) => setModType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => setModType(v, btn));
+            addButton("buttons2", "sine", (v, btn) => playWaveType('sine', btn));
+            addButton("buttons2", "triangle", (v, btn) => playWaveType('triangle', btn));
+            addButton("buttons2", "sawtooth", (v, btn) => playWaveType('sawtooth', btn));
+            addButton("buttons2", "square", (v, btn) => playWaveType('square', btn));
+            addButton("buttons2", "stop", (v, btn) => {
+                if (modulator)
+                    modulator.stop();
+                if (carrier)
+                    carrier.stop();
+                carrier = null;
+                modulator = null;
+                Scope.setActive(false);
+                manageButtonState(btn, false, "buttons2");
+            });
+
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.chartId = null;
+            cfg.fftSize = 4096 * 2;
+            cfg.enableEnv = false;
+            cfg.chartSlowdown = 1;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, cfg.chartId, [400, 400, 0], 200);
+            Scope.install(cfg, audioContext, mixNode);
+
+            const pitchSlider = makeSliderCallback("pitch", 
+                f => setCarrierFrequency(f), true, 
+                v => noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+
+            const modSlider = makeSliderCallback("mod", 
+                a => setModFrequency(a), true,
+                v => Number(v), a => (a >= 1000 ? (a / 1000) + "k" : a) + "Hz");
+
+            setupParentCommunication();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => runRingModApp());
+    </script>
+    </body>
+</html>

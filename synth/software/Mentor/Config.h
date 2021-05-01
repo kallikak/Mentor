@@ -9,14 +9,7 @@
 
 #include <Audio.h>
 
-// POLYPHONY can be 32 or 16
-#define USEPOLY32 1
-
-#if USEPOLY32
-#define POLYPHONY     32
-#else
 #define POLYPHONY     16
-#endif
 
 typedef char Str8[9];
 typedef char Str12[13];
@@ -65,16 +58,9 @@ typedef enum
   POLY4 = 2,
   POLY8 = 3,
   POLY16 = 4,
-#if POLYPHONY==32
-  POLY32 = 5
-#endif  
 } poly_t;
 
-#if POLYPHONY==32
-#define POLYMAX POLY32
-#else
 #define POLYMAX POLY16
-#endif
 
 typedef enum {
   LFOSYNC_OFF,

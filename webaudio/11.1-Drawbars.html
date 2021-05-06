@@ -44,7 +44,7 @@
         <div id="controls" class="controls">
             <div id="drawbars" class="envelopeSliders">
 				<div class="drawbars">
-					<span class="tickmark tick0">Off &mdash;</span>
+					<span class="tickmark tick0">Max &mdash;</span>
 					<span class="tickmark tick1">&ndash;</span>
 					<span class="tickmark tick2">&ndash;</span>
 					<span class="tickmark tick3">&ndash;</span>
@@ -52,7 +52,7 @@
 					<span class="tickmark tick5">&ndash;</span>
 					<span class="tickmark tick6">&ndash;</span>
 					<span class="tickmark tick7">&ndash;</span>
-					<span class="tickmark tick8">Max &mdash;</span>
+					<span class="tickmark tick8">Off &mdash;</span>
 				</div>
 			</div>
             <p>
@@ -117,7 +117,7 @@
 		function addDrawbars(slidersId)
 		{
 			let bar_16, bar_5_1_3, bar8, bar4, bar2_2_3, bar2, bar1_3_5, bar1_1_3, bar1;
-			bars.forEach(b => makeVerticalSlider(b.name, null, 120, 0, 8, 8 - b.level, slidersId));
+			bars.forEach(b => makeVerticalSlider(b.name, null, 120, 0, 8, b.level, slidersId));
 			const container = document.getElementById(slidersId);
 			container.appendChild(makeElement("br", null, null));
 			const colourclass = [
@@ -130,7 +130,7 @@
 				b.slider = makeSliderCallback(b.name, u => {
 					b.gain.gain.setValueAtTime(GAINFACTOR * u / 8, audioContext.currentTime);
 					b.level = u;
-				}, false, v => 8 - Number(v), null)
+				}, false, v => Number(v), null)
 			});
 		}
 

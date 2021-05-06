@@ -14,7 +14,7 @@
 </head>
 <body>
     <div class="webaudio">
-        <div class="header">Three Tone Organ</div>
+        <div class="header">Four Tone Organ</div>
         <div id="controls" class="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
@@ -87,7 +87,9 @@
                 {
                     real[i] = 0;
                     const extra = distortionAmount * (i - 1) / i;
-                    if (type == 'square')
+                    if (type == 'sine')
+                        imag[i] = i == 1 ? 1 : d * d / 4;
+                    else if (type == 'square')
                         imag[i] = i % 2 ? 1 / i + extra : 0;
                     else if (type == 'sawtooth')
                         imag[i] = i ? 1 / i + extra : 0;
@@ -97,6 +99,7 @@
                 return {real, imag};
             }
 
+            addButton("buttons", "sine", (v, btn) => selectType(v, btn));
             addButton("buttons", "triangle", (v, btn) => selectType(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => selectType(v, btn), ["bluebutton" ,"bluebuttonpressed"]);
             addButton("buttons", "square", (v, btn) => selectType(v, btn));

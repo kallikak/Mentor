@@ -314,7 +314,7 @@ const Config = {};
         {
             if (me.osc)
             {
-                me.osc.type = 'periodic';
+                // me.osc.type = 'periodic';
                 me.osc.real = real;
                 me.osc.imag = imag;
                 const wave = audioContext.createPeriodicWave(config.osc.real, config.osc.imag, {disableNormalization: true});

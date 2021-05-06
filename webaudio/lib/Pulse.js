@@ -228,6 +228,7 @@ var PolyBlepPulse = {};
                 widthSource.disconnect(t);
                 detuneSource.disconnect(t);
                 widthSource.disconnect(t);
+                pulse.disconnect(t);
                 pulse.onaudioprocess = null;
             };
 

@@ -48,8 +48,11 @@
             let mixNode = audioContext.createGain();
             let modtype = 'sine';
 
+            let output = audioContext.createGain();
+            output.gain.value = 0.5;
             mixNode.gain.value = 0;
-            mixNode.connect(audioContext.destination);
+            mixNode.connect(output);
+            output.connect(audioContext.destination);
 
             function setCarrierType(type, btn)
             {

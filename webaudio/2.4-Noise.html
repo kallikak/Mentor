@@ -15,8 +15,8 @@
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
-            <span id="noisetypelabel">Current noise type:</span>
-            <button class="bluebutton" id="noisetypebtn">White</button>
+            Select noise:&nbsp;
+            <span class="noisebuttons" id="noisebuttons"></span>
             <p></p>
             <div id="sliders"></div>
         </div>
@@ -26,6 +26,11 @@
 
     <script>
         'use strict';
+
+        const WHITE = 0;
+        const PINK = 1;
+        const BROWN = 2;
+        const BLUE = 3;
         
         let audioContext;
         let output;
@@ -95,16 +100,23 @@
                 Scope.setActive(false);
                 manageButtonState(btn);
             });
+
+            addButton("noisebuttons", "White", (v, btn) => updateNoise(WHITE, btn), 
+                ["bluebutton", "bluebuttonpressed"]);
+            addButton("noisebuttons", "Pink", (v, btn) => updateNoise(PINK, btn));
+            addButton("noisebuttons", "Brown", (v, btn) => updateNoise(BROWN, btn));
+            addButton("noisebuttons", "Blue", (v, btn) => updateNoise(BLUE, btn));
             
-            document.getElementById("noisetypebtn").onclick = e => {
-                noisetype = ++noisetype % 4;
-                document.getElementById("noisetypebtn").innerText = Noise.NOISE_NAMES[noisetype];
+            function updateNoise(type, btn)
+            {
+                noisetype = type;
                 if (noise)
                 {
                     noise.disconnect();
                     noise = Noise.createNoise(noisetype, audioContext);
                     noise.connect(noiseGain);
                 }
+                manageButtonState(btn, false, "noisebuttons");
             }
 
             const cfg = Scope.getConfigTemplate();

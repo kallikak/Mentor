@@ -53,7 +53,7 @@ var Keyboard = {};
         document.addEventListener("keyup", function(e) {
             const key = keymap.find(k => k.key == e.key.toUpperCase());
             if (key) {
-                if (key.id === curkey.id)
+                if (curkey && key.id === curkey.id)
                 {
                     if (callback)
                         managekey(curkey.id, null, false);

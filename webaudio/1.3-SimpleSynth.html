@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-    <title>Three Tone Organ</title>
+    <title>Four Tone Organ</title>
     <link rel="stylesheet" href="lib/webaudio.css">
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
@@ -14,7 +14,7 @@
 </head>
 <body>
     <div class="webaudio">
-        <div class="header">Three Tone Organ</div>
+        <div class="header">Four Tone Organ</div>
         <div id="controls" class="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
@@ -26,6 +26,7 @@
     </div>
 
     <script>
+        'use strict';
 
         function runSynthApp(showScope = false, addReverb = false, addDistortion = false)
         {
@@ -34,24 +35,51 @@
             let audioCtx = Synth.initAudio(config);
             
             let lastnote = null;
+            let lastn = 0;
+            let shift = 0;
             let reverb = null;
             let distortionAmount = 0;
             let type = 'sawtooth';
+            let gliderate = 0;
 
             if (addReverb)
             {
                 reverb = Reverb.connectReverb(audioCtx, Synth.output);
-                document.getElementsByClassName("header")[0],innerHTML = 'Reverb';
+                document.getElementsByClassName("header")[0].innerHTML = 'Reverb';
             }
+
+            if (glide)
+                document.getElementsByClassName("header")[0].innerHTML = 'Portamento';
 
             function selectType(t, btn)
             {
                 type = t;
-                if (addDistortion)
-                    makePeriodicWave(distortionAmount);
+                if (addDistortion) 
+                {
+                    setDistortion(distortionAmount);
+                }
                 else
                     Synth.setOscShape(type);
                 manageButtonState(btn, false);
+            }
+
+            function setDistortion(d)
+            {
+                if (addDistortion) 
+                {
+                    distortionAmount = d;
+                    const p = makePeriodicWave(distortionAmount);
+                    Synth.setPeriodicWave(p.real, p.imag);
+                }
+            }
+
+            function updateRange()
+            {
+                if (lastnote)
+                {
+                    lastnote.noteOff(true);
+                    lastnote = Synth.noteOn(lastn + shift);
+                }
             }
 
             function makePeriodicWave(d)
@@ -64,19 +92,19 @@
                 {
                     real[i] = 0;
                     const extra = distortionAmount * (i - 1) / i;
-                    if (type == 'square')
+                    if (type == 'sine')
+                        imag[i] = i == 1 ? 1 : d * d / 4;
+                    else if (type == 'square')
                         imag[i] = i % 2 ? 1 / i + extra : 0;
                     else if (type == 'sawtooth')
                         imag[i] = i ? 1 / i + extra : 0;
                     else if (type == 'triangle') 
                         imag[i] = i % 2 ? Math.pow(-1, (i - 1) / 2) * (1 / (i * i) + extra * (1 + i) / i) : 0;
                 }
-                config.osc.shape = 'periodic';
-                // config.osc.level = level;
-                config.osc.real = real;
-                config.osc.imag = imag;
+                return {real, imag};
             }
 
+            addButton("buttons", "sine", (v, btn) => selectType(v, btn));
             addButton("buttons", "triangle", (v, btn) => selectType(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => selectType(v, btn), ["bluebutton" ,"bluebuttonpressed"]);
             addButton("buttons", "square", (v, btn) => selectType(v, btn));
@@ -93,31 +121,83 @@
                     makeScopes("scopes", cfg.scopeId, null, null, [800], 200);
                 Scope.install(cfg, audioCtx, Synth.output);
             }
-            
+
+            let lastuptime = 0;
+            let glidetimer;
             Keyboard.installKeyboardHTML('controls', 'keyboard', (n, down) => {
-                const i = n - 48;
                 if (down)
                 {
-                    if (lastnote)
-                        lastnote.noteOff(true);
-                    lastnote = Synth.noteOn(n + shift);
+                    // if there is a lastnote we will glide, so prevent the note off
+                    if (glidetimer >= 0)
+                    {
+                        clearTimeout(glidetimer);
+                        glidetimer = -1;
+                    }
+                    const held = lastnote != null || (new Date().getTime() - lastuptime < 200);
+                    if (glide && held && gliderate > 0)
+                    {
+                        if (lastnote)
+                        {
+                            lastnote.glideToFrequency(Synth.noteToFreq(n + shift), gliderate);
+                        }
+                        else
+                        {
+                            lastnote = Synth.noteOn(n + shift);
+                        }
+                    }
+                    else
+                    {
+                        if (lastnote)
+                            lastnote.noteOff(true);
+                        lastnote = Synth.noteOn(n + shift);
+                    }
+                    lastn = n;
                 }
                 else
                 {                
+                    lastuptime = new Date().getTime();
                     if (lastnote)
                     {
-                        lastnote.noteOff(false);
-                        lastnote = null;
+                        if (glide && gliderate > 0)
+                        {
+                            glidetimer = setTimeout(() => {
+                                if (lastnote)
+                                {
+                                    lastnote.noteOff(false);
+                                    lastnote = null;
+                                    lastn = 0;
+                                }
+                                glidetimer = -1;
+                            }, 200);
+                        }
+                        else
+                        {
+                            lastnote.noteOff(false);
+                            lastnote = null;
+                            lastn = 0;
+                        }
                     }
                 }
                 Scope.setActive(Synth.isPlaying());
             });
 
-            let shift = 0;
-            makeSlider("range", "Range:", 320, 0, 5, shift + 2, "sliders");
-            const rangeSlider = makeSliderCallback("range", 
-                r => shift = 12 * (r - 2), true, 
-                v => Number(v), i => [32, 16, 8, 4, 2, 1][i] + "'");
+            if (glide)
+            {
+                makeSlider("port", "Glide time:", 320, 0, 50, 10, "sliders");
+                const portSlider = makeSliderCallback("port", 
+                    a => gliderate = a / 10, true,
+                    v => Number(v), a => (a / 10).toFixed(1) + "s");
+            }
+            else
+            {
+                makeSlider("range", "Range:", 320, 0, 5, shift + 2, "sliders");
+                const rangeSlider = makeSliderCallback("range", 
+                    r => {
+                        shift = 12 * (r - 2);
+                        updateRange();
+                    }, true, 
+                    v => Number(v), i => [32, 16, 8, 4, 2, 1][i] + "'");
+            }
     
             if (addReverb)
             {
@@ -131,14 +211,16 @@
             {
                 makeSlider("distortion", "Distortion:", 320, 0, 100, 0, "sliders");
                 const distortionSlider = makeSliderCallback("distortion",
-                    d => makePeriodicWave(d / 100), true,
+                    d => setDistortion(d / 100), true,
                     v => Number(v), v => v.toString());
+                setDistortion(distortionAmount);
             }
 
             setupParentCommunication();
         }
 
         const params = new URLSearchParams(location.search);
+        const glide = params.get('portamento') == 1;
         const addReverb = params.get('reverb') == 1;
         const addDistortion = params.get('distortion') == 1;
         document.addEventListener('DOMContentLoaded', () => runSynthApp(!addReverb, addReverb, addDistortion));

@@ -238,6 +238,17 @@ const Config = {};
         });
     }
 
+    namespace.setPeriodicWave = function(real, imag)
+    {
+        config.osc.shape = 'periodic';
+        config.osc.real = real;
+        config.osc.imag = imag;
+        voices.forEach(v => {
+            if (v)
+                v.setPeriodicWave(real, imag);
+        });
+    }
+
     namespace.setOscLevel = function(u) 
     {
         config.osc.level = u;
@@ -299,10 +310,36 @@ const Config = {};
             me.setOscLevel(config.osc.level);
         }
 
+        me.setPeriodicWave = function(real, imag)
+        {
+            if (me.osc)
+            {
+                // me.osc.type = 'periodic';
+                me.osc.real = real;
+                me.osc.imag = imag;
+                const wave = audioContext.createPeriodicWave(config.osc.real, config.osc.imag, {disableNormalization: true});
+                me.osc.setPeriodicWave(wave);
+            }
+        }
+
         me.setOscFrequency = function(value) 
         {
             if (me.osc)
+            {
+                me.freq = value;
                 me.osc.frequency.setValueAtTime(value, audioContext.currentTime);
+            }
+        }
+
+        me.glideToFrequency = function(value, glidetime) 
+        {
+            if (me.osc) 
+            {
+                me.osc.frequency.cancelScheduledValues(audioContext.currentTime);
+                me.osc.frequency.setValueAtTime(me.freq, audioContext.currentTime);
+                me.osc.frequency.exponentialRampToValueAtTime(value, audioContext.currentTime + glidetime);
+                me.freq = value;
+            }
         }
 
         me.setOscDetune = function(value) 
@@ -384,6 +421,7 @@ const Config = {};
         // create osc
         me.osc = audioContext.createOscillator();
         
+        me.note = note;
         if (note >= 0)
             me.setOscFrequency(Synth.noteToFreq(note));
         if (config.osc.shape === 'periodic')

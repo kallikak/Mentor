@@ -104,6 +104,11 @@
 			ctx.stroke(); // draw it!
 		}
 
+		function flat() {
+			pts = pts.map((v, i) => 0);
+			redraw();
+		}
+
 		function sine() {
 			pts = pts.map((v, i) => Math.sin(2 * Math.PI * i / pts.length + Math.PI));
 			redraw();
@@ -215,9 +220,20 @@
 			// 	max * scale + shift = +1
 			// (max - min) * scale = 2 => scale = 2 / (max - min)
 			// shift = min * 2 / (max - min) + 1 = min * scale + 1
-			const scale = min == max ? 0 : 2 / (max - min);
-			const shift = min == max ? 0 : 1 - max * scale;
-			pts = pts.map(p => scale * p + shift);
+			// const scale = min == max ? 0 : 2 / (max - min);
+			// const shift = min == max ? 0 : 1 - max * scale;
+			// pts = pts.map(p => scale * p + shift);
+
+			// scale but preserve the zero line
+			const shift = min > 0 ? -min : (max < 0 ? -max : 0);
+			max += shift;
+			min += shift;
+
+			const upscale = min ? Math.abs(0.99 / min) : 0;
+			const dnscale = max ? Math.abs(0.99 / max) : 0;
+			const scale = upscale && dnscale ? Math.min(upscale, dnscale) : Math.max(upscale, dnscale);
+
+			pts = pts.map(p => (p + shift) * scale);
 		}
 
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -283,6 +299,9 @@
             {
                 switch (t)
                 {
+                    case "flat":
+                        flat();
+                        break;
                     case "sine":
                         sine();
                         break;
@@ -299,6 +318,7 @@
                 manageButtonState(btn, false);
             }
 
+            addButton("buttons", "flat", (v, btn) => selectType(v, btn));
             addButton("buttons", "sine", (v, btn) => selectType(v, btn));
             addButton("buttons", "triangle", (v, btn) => selectType(v, btn));
             addButton("buttons", "sawtooth", (v, btn) => selectType(v, btn));
@@ -333,7 +353,7 @@
             });
 
             let shift = 0;
-            makeSlider("range", "Range:", 320, 0, 5, shift + 2, "sliders");
+            makeSlider("range", "Range:", 320, 1, 5, shift + 2, "sliders");
             const rangeSlider = makeSliderCallback("range", 
                 r => shift = 12 * (r - 2), true, 
                 v => Number(v), i => [32, 16, 8, 4, 2, 1][i] + "'");

@@ -42,6 +42,7 @@
             audioContext = new AudioContext();
 
             output = audioContext.createGain();
+            output.gain.value = 0.5;
             PolyBlepPulse.setupPulseSupport(audioContext);
             output.connect(audioContext.destination);
             setupInterface();

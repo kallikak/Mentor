@@ -74,6 +74,35 @@ void loop()
     {
       printConfig(config);
     }
+    else if (c == '1')
+    {
+      Serial.println("Playing 1 note");
+      playNote(55, 127);
+    }
+    else if (c == '2')
+    {
+      Serial.println("Playing 2 notes");
+      playNote(55, 127);
+      playNote(62, 127);
+    }
+    else if (c == '5')
+    {
+      Serial.println("Playing 5 notes");
+      playNote(55, 127);
+      playNote(59, 127);
+      playNote(62, 127);
+      playNote(67, 127);
+      playNote(69, 127);
+    }
+    else if (c == '0')
+    {
+      Serial.println("Lifting notes");
+      releaseNote(55);
+      releaseNote(59);
+      releaseNote(62);
+      releaseNote(67);
+      releaseNote(69);
+    }
     else if (c == 'm')
     {
       Serial.print("Max memory usage: ");

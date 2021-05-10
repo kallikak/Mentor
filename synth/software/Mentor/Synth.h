@@ -4,9 +4,6 @@
 #include "Voice.h"
 #include "MIDIManager.h"
 
-#define MIXERS        (POLYPHONY >> 2)
-#define COMBINEMIXERS (MIXERS >> 2)
-
 #define NUM_CLOCK_FACTORS 8
 
 extern const char *clockFactors[];
@@ -19,10 +16,6 @@ class Synth
     float lfoFreq = 0;
     LFOSync_t lfoSync = LFOSYNC_OFF;
     float detunings[POLYPHONY];
-    AudioMixer4 *envMix[MIXERS];
-    AudioMixer4 *rawMix[MIXERS];
-    AudioMixer4 *envCombine[COMBINEMIXERS];
-    AudioMixer4 *rawCombine[COMBINEMIXERS];
     
     void adjustLevelForEffects();
     void calcDetunings();

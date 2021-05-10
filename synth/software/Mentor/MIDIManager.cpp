@@ -14,6 +14,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 #define BASE_NOTE 48
 
 bool sustainState = false;
+bool aftertouch = false;
 notedata NO_NOTE = {0, 0, -1};
 
 notedata note[POLYPHONY] = { NO_NOTE };
@@ -182,11 +183,11 @@ void handleNoteOn(byte channel, byte pitch, byte velocity)
 #if DEBUG_SERIAL
   char tempstr[50] = {0};
   sprintf(tempstr, "On: %d = %s on [%d]. ", pitch, notestring((int)round(pitch - 20)), velocity);
-  Serial.print(tempstr);
+  Serial.println(tempstr);
 #endif  
   // handle unison
   int unison = getUnison(config->osc.poly);
-//  AudioNoInterrupts();
+  AudioNoInterrupts();
   for (int i = 1; i <= unison; ++i)
   {
     notedata n = addNote(pitch, velocity);
@@ -197,7 +198,7 @@ void handleNoteOn(byte channel, byte pitch, byte velocity)
       synth->playNote(n, i, unison);
     }
   }
-//  AudioInterrupts();
+  AudioInterrupts();
 #if DEBUG_SERIAL
   debugNotes();
 #endif  
@@ -251,6 +252,9 @@ void resetMIDI()
 #define CC_VOLUME     9
 #define CC_ALLOFF     0x7B
 
+static bool seenSustain = false;
+static bool sustainOnValue = 127;
+
 void handleControlChange(byte channel, byte control, byte value)
 {
   if (control == CC_MODWHEEL)
@@ -259,12 +263,20 @@ void handleControlChange(byte channel, byte control, byte value)
     resetMIDI();
   else if (control == CC_SUSTAIN_PEDAL)
   {
-    sustainState = value == 127;
-#if DEBUG_SERIAL    
+    if (!seenSustain)
+    {
+      // assume press so current value is on value
+      sustainOnValue = value;
+      sustainState = true;
+      seenSustain = true;
+    }
+    else
+      sustainState = value == sustainOnValue;
+//#if DEBUG_SERIAL    
     Serial.print(value);
     Serial.print(" => sustain is ");
     Serial.println(sustainState ? "On" : "Off");
-#endif    
+//#endif    
     clearSustainedNotes();
     if (config->env.sustain == 0)
     {
@@ -287,7 +299,18 @@ void handlePitchBend(byte channel, int value)
 
 void handleAfterTouch(byte channel, byte pressure)
 {
-  synth->setLFOFilter(constrainCC(config->lfo.filterAmt + pressure));
+  if (aftertouch)
+    synth->setLFOFilter(constrainCC(config->lfo.filterAmt + pressure));
+}
+
+bool getAftertouch()
+{
+  return aftertouch;
+}
+
+void setAftertouch(bool set)
+{
+  aftertouch = set;
 }
 
 #define MIDI_CLOCKS_PER_BEAT 24

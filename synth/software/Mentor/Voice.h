@@ -14,7 +14,7 @@ class Voice
     
     AudioMixer4                 *mix;
     AudioEffectEnvelope         *env;
-    AudioEffectEnvelope         *raw;
+    AudioEffectEnvelope              *raw;
     
     AudioEffectEnvelope         *filterEnv;
     AudioAmplifier              *filterPreamp;

@@ -66,7 +66,7 @@ const char *waveshapeStr(waveshape w, bool full)
     case SAWTOOTH:
       return full ? "Sawtooth" : "Saw";
     case REV_SAWTOOTH:
-      return full ? "Reverse sawtooth" : "Rev";
+      return full ? "Ramp" : "Ramp";
     case S_AND_H:
       return full ? "Sample and hold" : "S&H";
   }
@@ -138,10 +138,6 @@ int polyVal(poly_t p)
 {
   switch (p)
   {
-#if POLYPHONY==32
-    case POLY32:
-      return 32;
-#endif      
     case POLY16:
       return 16;
     case POLY8:
@@ -161,21 +157,6 @@ int getUnison(poly_t p)
 {
   switch (p)
   {
-#if POLYPHONY==32
-    case POLY32:
-      return 1;
-    case POLY16:
-      return 2;
-    case POLY8:
-      return 4;
-    case POLY4:
-      return 8;
-    case POLY2:
-    default:
-      return 16;
-    case UNISON:
-      return 32;
-#else      
     case POLY16:
       return 1;
     case POLY8:
@@ -187,7 +168,6 @@ int getUnison(poly_t p)
       return 8;
     case UNISON:
       return 16;
-#endif  
   }
 }
 

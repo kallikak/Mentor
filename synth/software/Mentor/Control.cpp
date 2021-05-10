@@ -5,6 +5,7 @@
 #include "Controls.h"
 #include "Demo.h"
 #include "LCD.h"
+#include "MIDIManager.h"
 #include "Rotary.h"
 #include "Presets.h"
 #include "Synth.h"
@@ -20,10 +21,11 @@ typedef enum
   CTRL_USER,    // for saving user presets
   CTRL_MIDICLK, // toggling external clock
   CTRL_DEMO,    // play or stop demo
-  CTRL_PANIC    // all MIDI notes off
+  CTRL_PANIC,   // all MIDI notes off
+  CTRL_AFTERTOUCH
 } control_state;
-#define NUM_STATES 5
-#define CTRL_LAST CTRL_PANIC
+#define NUM_STATES 6
+#define CTRL_LAST CTRL_AFTERTOUCH
 
 void checkSwitch();
 void controlClick();
@@ -55,6 +57,8 @@ int getLastStateValue()
       return getLastUserPresetIndex();
     case CTRL_DEMO:
       return demoIsPlaying() ? 1 : 0;
+    case CTRL_AFTERTOUCH:
+      return getAftertouch() ? 1 : 0;
     default:
       return 0;
   }
@@ -74,6 +78,8 @@ const char *getStateString(control_state state)
       return "Demo";
     case CTRL_PANIC:
       return "Panic";
+    case CTRL_AFTERTOUCH:
+      return "Aftertouch";
     default:
       return "";
   }
@@ -107,6 +113,8 @@ const char *getValueString(control_state state, int ctrl_val)
       return getDemoDescription(ctrl_val);
     case CTRL_PANIC:
       return "Send notes off";
+    case CTRL_AFTERTOUCH:
+      return getAftertouch() ? "Turn off" : "Turn on";
   }
   return "<N/A>";
 }
@@ -198,6 +206,7 @@ void controlTurned(int d, bool btnState)
         ctrl_val = max(0, min(demoIsPlaying() ? 2 : 4, ctrl_val));
         break;
       case CTRL_PANIC:
+      case CTRL_AFTERTOUCH:
         break;  // nothing to do
     }
     writeParamString(0, " ", getStateString(ctrl_state));
@@ -245,6 +254,9 @@ void selectValue()
       break;
     case CTRL_PANIC:
       resetMIDI();
+      break;
+    case CTRL_AFTERTOUCH:
+      setAftertouch(!getAftertouch());
       break;
   }
   writeParamString(1, " ", getValueString(ctrl_state, ctrl_val));

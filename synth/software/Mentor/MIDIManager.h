@@ -50,6 +50,10 @@ void resetMIDI();
 
 void stopAllMIDI();
 
+bool getAftertouch();
+
+void setAftertouch(bool set);
+
 void playNote(byte pitch, byte velocity);
 
 void releaseNote(byte pitch);

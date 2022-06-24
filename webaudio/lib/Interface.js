@@ -4,7 +4,7 @@ function manageButtonState(btn, managedisable, containerid = "buttons")
 {
     const isstop = btn.id === "stopButton";
     document.querySelectorAll("#" + containerid)[0].querySelectorAll('button').forEach((e) => {
-        e.classList.remove("bluebuttonpressed")
+        e.classList.remove("bluebuttonpressed");
         if (managedisable && e.id !== "stopButton")
             e.disabled = !isstop;
     });
@@ -247,6 +247,7 @@ function addButton(containerId, name, callback, classes = ["bluebutton"])
     b.innerHTML = name;
     document.getElementById(containerId).appendChild(b);
     b.onclick = e => callback(name, e.target, e.immediate);
+    return b;
 }
 
 // For when the app is in an iframe

@@ -7,12 +7,14 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 
 </head>
 <body>
     <div class="webaudio">
         <div class="header">LFO Shapes</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             LFO shape:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p>
@@ -27,7 +29,7 @@
     <script>
         'use strict';
         
-        function runLFOModApp()
+        function runLFOModApp(testid)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
             config.lfo = {shape: 'triangle', pitch: 0, freq: 2, amp: 0, pulse: 0};
@@ -87,9 +89,14 @@
             Scope.install(cfg, audioCtx, Synth.output);
 
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid, {config:() => config});
         }
 
-        document.addEventListener('DOMContentLoaded', () => runLFOModApp());
+        const params = new URLSearchParams(location.search);
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runLFOModApp(testid));
     </script>
     </body>
 </html>

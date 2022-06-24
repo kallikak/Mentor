@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="7.3.0">
+<eagle version="8.2.1">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -9878,7 +9878,7 @@ Source: AVX .. aphvc.pdf</description>
 <part name="D15" library="adafruit" deviceset="DIODE" device="SOD-123"/>
 <part name="SUPPLY4" library="supply2" deviceset="VCC" device=""/>
 <part name="GND7" library="supply1" deviceset="GND" device=""/>
-<part name="U$3" library="Teensy_Audioshield_alt" deviceset="AUDIOSHIELD" device=""/>
+<part name="U$3" library="Teensy_Audioshield_alt" deviceset="AUDIOSHIELD" device="" value="AUDIO SHIELD"/>
 <part name="IC1" library="adafruit" deviceset="MCP23017" device="SO" value="MCP23017SO"/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
 <part name="SUPPLY1" library="supply2" deviceset="VCC" device=""/>
@@ -9909,6 +9909,7 @@ Source: AVX .. aphvc.pdf</description>
 <sheets>
 <sheet>
 <plain>
+<text x="53.34" y="60.96" size="1.524" layer="94">AUDIO SHIELD</text>
 </plain>
 <instances>
 <instance part="SUPPLY8" gate="G$1" x="190.5" y="119.38" rot="MR0"/>

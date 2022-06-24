@@ -7,11 +7,13 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">The Amplitude Envelope</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p>
@@ -33,7 +35,7 @@
     <script>
         'use strict';
         
-        function runEnvelopeApp(envtype, showSpectrum = false, inverse = false)
+        function runEnvelopeApp(envtype, showSpectrum, inverse, testid)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, envmod);
             config.osc.level = 1;
@@ -146,13 +148,18 @@
             }
             
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid, {config:() => config});
         }
 
         const params = new URLSearchParams(location.search);
         const envmod = params.get('envmod') == 1;
         const envtype = params.get('env');
         const inverse = params.get('inverse') == 1;
-        document.addEventListener('DOMContentLoaded', () => runEnvelopeApp(envtype, envmod, inverse));
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => 
+            runEnvelopeApp(envtype, envmod, inverse, testid));
     </script>
     </body>
 </html>

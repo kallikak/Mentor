@@ -68,11 +68,11 @@ void setup()
     pinMode(PITCH_POT, INPUT);
     pinMode(MIX_POT, INPUT);
 
+    // configure and start the three oscillators
     triangle.frequency(pitch);
     triangle.amplitude(0.5);
     triangle.begin(WAVEFORM_TRIANGLE);
 
-    // configure and start the three oscillators
     sawtooth.frequency(pitch);
     sawtooth.amplitude(0.5);
     sawtooth.begin(WAVEFORM_SAWTOOTH);

@@ -7,11 +7,13 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">Filters</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
@@ -24,7 +26,7 @@
     <script>
         'use strict';
         
-        function runFilterApp(showAmplitude, showResonance, isHighPass)
+        function runFilterApp(showAmplitude, showResonance, isHighPass, testid)
         {
             let v = null;
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
@@ -81,14 +83,18 @@
             Scope.install(cfg, audioCtx, Synth.output);            
 
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid, {config:() => config});
         }
         
         const params = new URLSearchParams(location.search);
         const showAmplitude = params.get('amp') == 1;
         const isHighPass = params.get('hipass') == 1;
         const showResonance = !isHighPass && params.get('res') == 1;
+        const testid = params.get('testid');
         document.addEventListener('DOMContentLoaded', () => 
-            runFilterApp(showAmplitude, showResonance, isHighPass));
+            runFilterApp(showAmplitude, showResonance, isHighPass, testid));
     </script>
     </body>
 </html>

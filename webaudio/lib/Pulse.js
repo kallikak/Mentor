@@ -79,9 +79,8 @@ var PolyBlepPulse = {};
         let freqInSecondsPerSample = 0;
         let sampleRate = audioContext.sampleRate;
         
-        // Adapted from "Phaseshaping Oscillator Algorithms for Musical Sound
-        // Synthesis" by Jari Kleimola, Victor Lazzarini, Joseph Timoney, and Vesa
-        // Valimaki.
+        // Adapted from "Phaseshaping Oscillator Algorithms for Musical Sound Synthesis" 
+        // by Jari Kleimola, Victor Lazzarini, Joseph Timoney, and Vesa Valimaki.
         // http://www.acoustics.hut.fi/publications/papers/smc2010-phaseshaping/
         const blep = (t, dt) => {
             if (t < dt) {
@@ -188,6 +187,7 @@ var PolyBlepPulse = {};
             return bufferSource;
         }
 
+        let pulse;
         audioContext.createPulseOscillator = function() 
         {
             let audioContext = this;
@@ -208,7 +208,7 @@ var PolyBlepPulse = {};
             detuneSource.connect(detuneAmount);
             widthSource.connect(widthAmount);
 
-            const pulse = createPulseWave(audioContext, freqAmount, detuneAmount, widthAmount);
+            pulse = createPulseWave(audioContext, freqAmount, detuneAmount, widthAmount);
             pulse.connect(output);
 
             pulse.frequency = freqAmount.gain;
@@ -232,6 +232,11 @@ var PolyBlepPulse = {};
                 pulse.onaudioprocess = null;
             };
 
+            return pulse;
+        }
+
+        namespace.getPulseOscillator = function() 
+        {
             return pulse;
         }
     }

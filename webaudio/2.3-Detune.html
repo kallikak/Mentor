@@ -7,11 +7,13 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">Detuning</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
@@ -23,7 +25,7 @@
     <script>
         'use strict';
         
-        function runDetuneApp()
+        function runDetuneApp(testid)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0.2, 1, 1, 0, true, true);
             config.volume = 0.5;
@@ -32,6 +34,8 @@
             let voice2 = null;
             let pitchSlider = null;
             let detuneSlider = null;
+            let savef;
+            let detune;
 
             function playVoice(type, freq, level)
             {
@@ -52,7 +56,27 @@
                 manageButtonState(btn);
             }
 
-            let savef;
+            function setDetune(d)
+            {
+                if (d == 0)
+                {
+                    // ensure they're in phase for 0 detune
+                    Synth.setAmpEnvA(0.2);
+                    Synth.setAmpEnvR(0.04);
+                    Synth.allNotesOff();
+                    voice1 = Synth.freqOn(savef);
+                    voice2 = Synth.freqOn(savef);
+                    setTimeout(() => {
+                        Synth.setAmpEnvA(0);
+                        Synth.setAmpEnvR(0);
+                    }, 400);
+                }
+                else
+                {
+                    voice2.setOscDetune(d);
+                }
+            }
+
             makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
             pitchSlider = makeSliderCallback("pitch", 
                 f => {
@@ -67,25 +91,9 @@
             makeSlider("detune", "Detune:", 400, -25, 25, 0, "sliders");
             detuneSlider = makeSliderCallback("detune", 
                     d => {
-                        if (voice2) {
-                            if (d == 0)
-                            {
-                                // ensure they're in phase for 0 detune
-                                Synth.setAmpEnvA(0.2);
-                                Synth.setAmpEnvR(0.04);
-                                Synth.allNotesOff();
-                                voice1 = Synth.freqOn(savef);
-                                voice2 = Synth.freqOn(savef);
-                                setTimeout(() => {
-                                    Synth.setAmpEnvA(0);
-                                    Synth.setAmpEnvR(0);
-                                }, 400);
-                            }
-                            else
-                            {
-                                voice2.setOscDetune(d);
-                            }
-                        }
+                        if (voice2)
+                            setDetune(d);
+                        detune = d;
                     }, true,
                     v => Number(v), a => a.toFixed(0) + " cents");
 
@@ -108,9 +116,28 @@
             Scope.install(cfg, audioCtx, Synth.output);
 
             setupParentCommunication();
+
+            if (testid)
+            {
+                const play = function(note, d)
+                {
+                    Synth.allNotesOff(true);
+                    savef = Synth.noteToFreq(note);
+                    voice1 = Synth.freqOn(savef);
+                    voice2 = Synth.freqOn(savef);
+                    setDetune(d);
+                }
+                const val = function()
+                {
+                    return {shape: config.osc.shape, detune};
+                }
+                loadTests(testid, {play, val});
+            }
         }
-        
-        document.addEventListener('DOMContentLoaded', () => runDetuneApp());
+
+        const params = new URLSearchParams(location.search);
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runDetuneApp(testid));
     </script>
     </body>
 </html>

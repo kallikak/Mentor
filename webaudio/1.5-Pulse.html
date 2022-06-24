@@ -7,11 +7,13 @@
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
     <script src="lib/Pulse.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">Pulse Waves</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             <span class="buttons" id="buttons"></span>
             <p></p>
             <div id="sliders"></div>
@@ -26,13 +28,14 @@
         let audioContext;
         let output;
         let pulse;
+        let pulsewidth;
 
         const noteToFreq = function(note) 
         {
             return 440 * Math.pow(2, (note - 69) / 12);
         }
             
-        function runPulseApp()
+        function runPulseApp(testid)
         {
             window.AudioContext = window.AudioContext || window.webkitAudioContext;
             audioContext = new AudioContext();
@@ -91,17 +94,24 @@
                 v => Number(v), a => a.toFixed(0) + "%");
             const pwSlider = makeSliderCallback("pw", 
                 w => {
+                    pulsewidth = 0.5 + w / 100 / 2;
                     if (pulse)
                     {
-                        pulse.width.setValueAtTime(0.5 + w / 100 / 2, audioContext.currentTime);
+                        pulse.width.setValueAtTime(pulsewidth, audioContext.currentTime);
                     }
                 }, true, v => Number(v), w => w.toFixed(0) + "%");
             
 
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid);
         }
 
-        document.addEventListener('DOMContentLoaded', () => runPulseApp());
+        const params = new URLSearchParams(location.search);
+        const showSpectrum = params.get('showSpectrum') != 0;
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runPulseApp(testid));
     </script>
     </body>
 </html>

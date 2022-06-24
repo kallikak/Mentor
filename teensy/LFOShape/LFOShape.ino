@@ -28,7 +28,7 @@ AudioControlSGTL5000     sgtl5000;       //xy=534,166
 
 #define LED 3
 
-// map our wavetype to teensy waveform (note there are two pulse waves)
+// map our wavetype to teensy waveform
 int shapes[] = {
     WAVEFORM_SINE, WAVEFORM_TRIANGLE, WAVEFORM_SAWTOOTH, 
     WAVEFORM_SAWTOOTH_REVERSE, WAVEFORM_SQUARE, WAVEFORM_SAMPLE_HOLD

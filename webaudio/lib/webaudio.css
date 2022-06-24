@@ -31,6 +31,11 @@ h3
     color: #039;
 }
 
+.emph
+{
+    font-style: italic;
+}
+
 .header
 {
     font-size: 1.4em;
@@ -83,6 +88,7 @@ p.sliderControl
 button
 {
     width: 90px;
+    height: 22px;
     font-size: 14px;
     background: #03f;
     border-radius: 5px;
@@ -117,6 +123,69 @@ button
     background: -moz-linear-gradient(top,  #00457c,  #00173e) !important;
 }
 
+/* dark blue button */
+.dkbluebutton 
+{
+    color: #d9eec7;
+    border: solid 1px #003683;
+    text-transform: capitalize;
+    background: #00356d;
+    background: -webkit-gradient(linear, left top, left bottom, from(#004d8e), to(#001845));
+    background: -moz-linear-gradient(top,  #004d8e,  #001845);
+}
+
+/* green */
+.greenbutton 
+{
+    color: #d9eec7;
+    border: solid 1px #00a376;
+    text-transform: capitalize;
+    background: #009d65;
+    background: -webkit-gradient(linear, left top, left bottom, from(#00be7d), to(#007548));
+    background: -moz-linear-gradient(top,  #00be7d,  #007548);
+}
+.greenbutton:hover 
+{
+    background: #004e7d;
+    background: -webkit-gradient(linear, left top, left bottom, from(#009c65), to(#005e37));
+    background: -moz-linear-gradient(top,  #009c65,  #007e37);
+}
+.greenbutton:disabled 
+{
+    opacity: 0.6;
+}
+.greenbuttonpressed 
+{
+    background: -webkit-gradient(linear, left top, left bottom, from(#007c45), to(#003e17)) !important;
+    background: -moz-linear-gradient(top,  #007c45,  #003e17) !important;
+}
+
+/* red */
+.bluebutton#stopButton
+{
+    color: #d9eec7;
+    border: solid 1px #d34600;
+    text-transform: capitalize;
+    background: #cd3500;
+    background: -webkit-gradient(linear, left top, left bottom, from(#cd3500), to(#754800));
+    background: -moz-linear-gradient(top,  #cd3500,  #754800);
+}
+.bluebutton#stopButton:hover 
+{
+    background: #bd3500;
+    background: -webkit-gradient(linear, left top, left bottom, from(#bd3500), to(#554800));
+    background: -moz-linear-gradient(top,  #bd3500,  #554800);
+}
+.bluebutton#stopButton:disabled 
+{
+    opacity: 0.6;
+}
+.bluebuttonpressed#stopButton
+{
+    background: -webkit-gradient(linear, left top, left bottom, from(#9d3500), to(#454800)) !important;
+    background: -moz-linear-gradient(top,  #9d3500,  #454800) !important;
+}
+
 .scope 
 {
     border: solid 2pt silver;
@@ -141,4 +210,29 @@ button
     width: 60px;
     display: inline-block;
     text-align: center;
+}
+
+.testarea
+{
+    display: block;
+    width: 90%;
+    margin: 0px auto;
+}
+
+.testcontainer
+{
+    border: solid #063 2px;
+    border-radius: 10px;
+    background: #eff;
+}
+
+.testtext 
+{
+    margin: 10px 40px;
+}
+
+.testtable
+{
+    margin: 0px auto;
+    padding-bottom: 5px;
 }

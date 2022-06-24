@@ -7,11 +7,13 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">Wave Types</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
@@ -23,7 +25,7 @@
     <script>
         'use strict';
         
-        function runWaveTypeApp(showSpectrum)
+        function runWaveTypeApp(showSpectrum, testid)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
             config.volume = 0.75;
@@ -69,11 +71,15 @@
             Scope.install(cfg, audioCtx, Synth.output);
 
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid, {config: () => config});
         }
-        
+            
         const params = new URLSearchParams(location.search);
         const showSpectrum = params.get('showSpectrum') != 0;
-        document.addEventListener('DOMContentLoaded', () => runWaveTypeApp(showSpectrum));
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runWaveTypeApp(showSpectrum, testid));
     </script>
     </body>
 </html>

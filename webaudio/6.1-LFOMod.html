@@ -7,12 +7,14 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 
 </head>
 <body>
     <div class="webaudio">
         <div class="header">LFO Modulation</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             <span id="waveformbuttons">Oscillator waveform:&nbsp;</span>
             <span class="buttons" id="buttons"></span>
             <p></p>
@@ -25,7 +27,7 @@
     <script>
         'use strict';
         
-        function runLFOModApp(filtermod)
+        function runLFOModApp(filtermod, testid)
         {
             const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
             config.lfo = {shape: 'triangle', pitch: filtermod ? 0 : 1, freq: 2, amp: 0};
@@ -93,11 +95,15 @@
             Scope.install(cfg, audioCtx, Synth.output);
 
             setupParentCommunication();
+
+            if (testid)
+                loadTests(testid, {config:() => config});
         }
 
         const params = new URLSearchParams(location.search);
         const filtermod = params.get('filtermod') == 1;
-        document.addEventListener('DOMContentLoaded', () => runLFOModApp(filtermod));
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runLFOModApp(filtermod, testid));
     </script>
     </body>
 </html>

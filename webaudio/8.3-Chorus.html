@@ -7,11 +7,13 @@
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
     <script src="lib/Effects.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 </head>
 <body>
     <div class="webaudio">
         <div class="header">Chorus, Flanger, Phaser</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             Select waveform:&nbsp;
             <span class="buttons" id="buttons"></span>
             <p></p>
@@ -32,13 +34,13 @@
         const PHASER = 2;
 
         let audioContext;
-        let tuna;
         let output;
         let wetGain;
         let dryGain;
         let effect = CHORUS;
         let effectNode = null;
         let note;
+        let type;
 
         const noteToFreq = function(note) 
         {
@@ -70,7 +72,7 @@
                 manageButtonState(btn, false, "effectbuttons");
         }
             
-        function runEffectApp()
+        function runEffectApp(testid)
         {
             window.AudioContext = window.AudioContext || window.webkitAudioContext;
             audioContext = new AudioContext();
@@ -83,10 +85,38 @@
             dryGain = audioContext.createGain();
             dryGain.gain.value = 0.5;
             dryGain.connect(output);
-            setupInterface();
+            setupInterface(testid);
         }
 
-        function setupInterface()
+        function playNote(t)
+        {
+            if (note)
+            {
+                note.disconnect();
+                note.stop();
+            }
+            note = audioContext.createOscillator();
+            type = t;
+            note.type = type;
+            note.frequency.value = noteToFreq(55);
+            note.connect(dryGain);
+            note.start();
+            updateEffect(effect, null);
+            pitchSlider.oninput();
+        }
+
+        function stopNote()
+        {
+            if (note) 
+            {
+                effectNode.disconnect();
+                note.disconnect();
+                note.stop();
+                note = null;
+            }
+        }
+
+        function setupInterface(testid)
         {
             makeSlider("pitch", "Pitch:", 400, 3000, 10300, 6900, "sliders");
             makeSlider("effect", "Effect level:", 400, 0, 100, 0, "sliders");
@@ -95,18 +125,7 @@
 
             function playWaveType(type, btn)
             {
-                if (note)
-                {
-                    note.disconnect();
-                    note.stop();
-                }
-                note = audioContext.createOscillator();
-                note.type = type;
-                note.frequency.value = noteToFreq(55);
-                note.connect(dryGain);
-                note.start();
-                updateEffect(effect, null);
-                
+                playNote(type); 
                 pitchSlider.oninput();
                 effectSlider.oninput();
                 depthSlider.oninput();
@@ -119,13 +138,7 @@
             addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
             addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
             addButton("buttons", "stop", (v, btn) => {
-                if (note) 
-                {
-                    effectNode.disconnect();
-                    note.disconnect();
-                    note.stop();
-                    note = null;
-                }
+                stopNote();
                 Scope.setActive(false);
                 manageButtonState(btn);
             });
@@ -156,9 +169,21 @@
                 v => Number(v), a => a.toFixed(0) + "%");
 
             setupParentCommunication();
+            if (testid)
+                loadTests(testid, {play:playNote, stop:stopNote, 
+                    config:() => {
+                        return {
+                        "shape": type,
+                        "effect": effect,
+                        "level": effectSlider.value,
+                        "depth": depthSlider.value,
+                        "speed": speedSlider.value
+                    }}});
         }
 
-        document.addEventListener('DOMContentLoaded', () => runEffectApp());
+        const params = new URLSearchParams(location.search);
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runEffectApp(testid));
     </script>
     </body>
 </html>

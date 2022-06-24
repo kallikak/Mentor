@@ -191,6 +191,15 @@ const Config = {};
         });
     }
 
+    namespace.setFilterType = function(t) 
+    {
+        config.filter.type = t;
+        voices.forEach(v => {
+            if (v)
+                v.setFilterType(t);
+        });
+    }
+
     // set a specific frequency for the cutoff
     namespace.setFilterCutoffFreq = function(f) 
     {
@@ -260,18 +269,13 @@ const Config = {};
 
     namespace.setAmpEnvA = function(u) { config.ampEnv.a = u; }
     namespace.setAmpEnvD = function(u) { config.ampEnv.d = u; }
-    namespace.setAmpEnvS = function(u) { config.ampEnv.d = u; }
+    namespace.setAmpEnvS = function(u) { config.ampEnv.s = u; }
     namespace.setAmpEnvR = function(u) { config.ampEnv.r = u; }
 
     namespace.setFilterEnvA = function(u) { config.filterEnv.a = u; }
     namespace.setFilterEnvD = function(u) { config.filterEnv.d = u; }
-    namespace.setFilterEnvS = function(u) { config.filterEnv.d = u; }
+    namespace.setFilterEnvS = function(u) { config.filterEnv.s = u; }
     namespace.setFilterEnvR = function(u) { config.filterEnv.r = u; }
-
-    namespace.setVolume = function(v) 
-    {
-        volNode.gain.value = v / 100;
-    }
 
     namespace.calcCutoffFrequency = function(cutoff) 
     {
@@ -353,6 +357,11 @@ const Config = {};
             me.oscGain.gain.setValueAtTime((config.osc.shape === 'sawtooth' ? -1 : 1) * value, audioContext.currentTime);
         }
 
+        me.setFilterType = function(type) 
+        {
+            me.filter.type = type;
+        }
+
         me.setFilterCutoff = function(value) 
         {
             me.filter.frequency.setValueAtTime(namespace.calcCutoffFrequency(value), audioContext.currentTime);
@@ -377,7 +386,7 @@ const Config = {};
         {
             if (!me.osc)
                 return; // already cleaned up
-            me.osc.onended = callback;
+            // me.osc.onended = callback;
             var now =  audioContext.currentTime;
             var release = config.getReleaseValue();	
 
@@ -411,6 +420,8 @@ const Config = {};
                                 lfoFilterGain.disconnect(me.filter.detune);
                                 me.osc = null;
                             }
+                            if (callback)
+                                callback();
                         }, 30);
                     }
                 }, (endTime - now) * 1000);
@@ -437,6 +448,7 @@ const Config = {};
         me.oscGain = audioContext.createGain();
         me.negate = config.osc.shape === 'sawtooth';
         me.setOscLevel(config.osc.level);
+
         me.osc.connect(me.oscGain);
         
         lfoOscGain.connect(me.osc.detune);
@@ -487,7 +499,38 @@ const Config = {};
 
         return me;
     }
-
+    
+    namespace.setToConfig = function(cfg)
+    {
+        namespace.setLFOShape(cfg.lfo.shape);
+        namespace.setLFOFrequency(cfg.lfo.freq);
+        namespace.setLFOOscAmount(cfg.lfo.pitch);
+        namespace.setLFOAmpAmount(cfg.lfo.amp);
+            
+        // namespace.setOscFrequency = function(w) 
+        namespace.setOscShape(cfg.osc.shape);
+        namespace.setOscLevel(cfg.osc.level);
+    
+        namespace.setFilterCutoff(cfg.filter.cutoff);
+        namespace.setResonance(cfg.filter.q);
+        namespace.setFilterType(cfg.filter.type);
+        namespace.setFilterLFOAmount(cfg.filter.lfo);
+        namespace.setFilterEnvAmount(cfg.filter.env);
+        config.filter.invert = cfg.filter.invert;
+    
+        namespace.setAmpEnvA(cfg.ampEnv.a);
+        namespace.setAmpEnvD(cfg.ampEnv.d);
+        namespace.setAmpEnvS(cfg.ampEnv.s);
+        namespace.setAmpEnvR(cfg.ampEnv.r);
+    
+        namespace.setFilterEnvA(cfg.filterEnv.a);
+        namespace.setFilterEnvD(cfg.filterEnv.d);
+        namespace.setFilterEnvS(cfg.filterEnv.s);
+        namespace.setFilterEnvR(cfg.filterEnv.r);
+    
+        namespace.setVolume(cfg.volume);
+    }
+    
     namespace.initAudio = function(cfg) 
     {
         if (cfg)

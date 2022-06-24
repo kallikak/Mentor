@@ -7,6 +7,8 @@
 	<script src="lib/Synth.js"></script>
     <script src="lib/Scope.js"></script>
     <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
 
     <style>
         .controlAmount
@@ -18,7 +20,7 @@
 <body>
     <div class="webaudio">
         <div class="header">Adding Waves</div>
-        <div class="controls">
+        <div class="controls" id="controls">
             <h3>Create a complex waveform by mixing wave types</h3>
             <span id="sliders"></span>
             <span class="buttons" id="buttons"></span>
@@ -29,11 +31,13 @@
 
     <script>
         'use strict';
+        
+        let config = null;
 
-        function runMixApp()
+        function runMixApp(testid)
         {
             let mix;
-            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+            config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
             config.volume = 0.75;
             let audioCtx = Synth.initAudio(config);
 
@@ -121,9 +125,23 @@
                 }, true, v => Number(v), m => mixToString(m));
 
             setupParentCommunication();
+
+            if (testid)
+            {
+                const f = function(mix)
+                {
+                    Synth.allNotesOff(true);
+                    voices = [];
+                    createMix(mix);
+                    playMix(mix);
+                }
+                loadTests(testid, {play:f, val:() => mix});
+            }
         }
-        
-        document.addEventListener('DOMContentLoaded', runMixApp);
+
+        const params = new URLSearchParams(location.search);
+        const testid = params.get('testid');
+        document.addEventListener('DOMContentLoaded', () => runMixApp(testid));
     </script>
     </body>
 </html>

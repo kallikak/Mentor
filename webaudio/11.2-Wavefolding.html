@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <title>Wavefolding</title>
+    <link rel="stylesheet" href="lib/webaudio.css">
+	<script src="lib/Synth.js"></script>
+    <script src="lib/Scope.js"></script>
+    <script src="lib/Interface.js"></script>
+    <script src="lib/Tester.js"></script>
+    <script src="Tests.js"></script>
+</head>
+<body>
+    <div class="webaudio">
+        <div class="header">Wavefolding</div>
+        <div class="controls" id="controls">
+            Select waveform:&nbsp;
+            <span class="buttons" id="buttons"></span>
+            <p></p>
+            <div id="sliders"></div>
+            <p id="enable">
+                Folding:&nbsp;
+                <input type="radio" id="foldoff" name="folding" value="off">
+                <label for="foldoff">Off</label>
+                <input type="radio" id="foldon" name="folding" value="on" checked>
+                <label for="foldon">On</label>
+            </p>
+        </div>
+        <table id="scopes"></table>
+    </div>
+
+    <script>
+        'use strict';
+						
+				let foldamt = 0;
+				let folding = true;
+				let lpFilter;
+				let audioCtx;
+				
+				function calcCutoffFrequency(cutoff) 
+				{
+						const nyquist = audioCtx.sampleRate / 2;
+						const noctaves = Math.log(nyquist / 10.0) / Math.LN2;
+						return Math.pow(2.0, noctaves * (cutoff - 1.0)) * nyquist;
+				}
+
+				function addSliders(slidersId, defaults)
+				{
+						let pitchSlider, foldSlider, filterSlider;
+						makeSlider("pitch", "Pitch:", 400, 3000, 10300, getDefault(defaults, 0, 5500), slidersId);
+						pitchSlider = makeSliderCallback("pitch", 
+								f => Synth.setOscFrequency(f), true, 
+								v => Synth.noteToFreq(v / 100), f => f.toFixed(0) + "Hz");
+
+						makeSlider("fold", "Overdrive:", 400, 0, 8000, 0, slidersId);
+						foldSlider = makeSliderCallback("fold", 
+  							a => foldamt = a / 1000, true,
+								v => Number(v), a => "<span style='font-size:1.2em;'>&times;</span> " + (1 + a / 1000).toFixed(2));
+
+						makeSlider("filter", "Lowpass:", 400, 0, 100, getDefault(defaults, 0, 100), slidersId);
+						filterSlider = makeSliderCallback("filter", 
+								co => lpFilter.frequency.value = calcCutoffFrequency(co), true, 
+								v => Number(v) / 100, co => {
+										const f = calcCutoffFrequency(co);
+										return f > 1000 ? (f / 1000).toFixed(2) + "kHz" : f.toFixed(0) + "Hz"; 
+								});
+
+						return [pitchSlider, foldSlider, filterSlider];
+				}
+        
+        function runWavefoldingApp()
+        {
+            const config = Config.setEnvelope(Config.getDefault(), 0, 1, 1, 0, true, true);
+						config.osc.level = 1.0 / 2;
+            config.volume = 1.0;
+            audioCtx = Synth.initAudio(config);
+						
+						lpFilter = audioCtx.createBiquadFilter();
+    				lpFilter.type = 'lowpass';
+    				lpFilter.Q.value = 0;
+    				lpFilter.frequency.value = calcCutoffFrequency(1.0); 
+    
+						const waveFolder = audioCtx.createScriptProcessor(1024, 1, 1);
+						
+						// patch the filter and wavefolder into the final synth stage
+						Synth.output.disconnect();
+						Synth.output.connect(lpFilter);
+						lpFilter.connect(waveFolder);
+						Synth.output = waveFolder;
+        		waveFolder.connect(audioCtx.destination);
+
+						waveFolder.onaudioprocess = function(event) 
+						{	
+							for (let channel = 0; channel < event.outputBuffer.numberOfChannels; channel++) {
+								const input = event.inputBuffer.getChannelData(channel);
+								const output = event.outputBuffer.getChannelData(channel);
+
+								for (let sample = 0; sample < event.inputBuffer.length; sample++)
+								{
+									let v = (1 + foldamt) * input[sample];
+									if (foldamt > 0)
+									{
+										if (folding)
+										{
+											while (v < -1 || v > 1)
+											{
+													if (v > 1)
+														v = 1 - (v - 1);
+													else if (v < -1)
+														v = -1 - (v + 1);
+											}
+										}
+										else
+										{
+											v = Math.max(-1, Math.min(1, v));
+										}
+									}
+
+									output[sample] = v;
+								}
+							}
+						}
+
+						let v1, v2;
+
+            function playMixedType(mix, btn)
+            {
+								Synth.allNotesOff();
+								const note = 56;
+                v1 = Synth.noteOn(note);
+								v1.setOscShape('sawtooth');
+								v1.setOscLevel(mix);
+                v2 = Synth.noteOn(note);
+								v2.setOscShape('square');
+								v2.setOscLevel(1 - mix);
+                pitchSlider.oninput();
+                foldSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            function playWaveType(type, btn)
+            {
+								Synth.allNotesOff();
+                config.osc.shape = type;
+                Synth.noteOn(56);	// note number will be overridden by the slider immediately
+                pitchSlider.oninput();
+                foldSlider.oninput();
+                Scope.setActive(true);
+                manageButtonState(btn);
+            }
+
+            const [pitchSlider, foldSlider] = addSliders("sliders", true);
+
+            addButton("buttons", "sine", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "triangle", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "sawtooth", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "square", (v, btn) => playWaveType(v, btn));
+            addButton("buttons", "Sqr+Saw", (v, btn) => playMixedType(0.33, btn));
+            addButton("buttons", "Saw+Sqr", (v, btn) => playMixedType(0.66, btn));
+            addButton("buttons", "stop", (v, btn) => {
+                Synth.allNotesOff();
+                Scope.setActive(false);
+                manageButtonState(btn);
+            });
+
+						document.querySelector("#foldoff").addEventListener('change', () => folding = false);
+						document.querySelector("#foldon").addEventListener('change', () => folding = true);
+        
+            const cfg = Scope.getConfigTemplate();
+            cfg.scopeId = 'scopeCanvas';
+            cfg.spectrumId = 'spectrumCanvas';
+            cfg.fftSize = 4096;
+            cfg.use_dBs = true;
+            makeScopes("scopes", cfg.scopeId, cfg.spectrumId, null, [400, 400, 0], 200);
+            Scope.install(cfg, audioCtx, Synth.output);
+
+            setupParentCommunication();
+        }
+            
+        const params = new URLSearchParams(location.search);
+        document.addEventListener('DOMContentLoaded', () => runWavefoldingApp());
+    </script>
+    </body>
+</html>

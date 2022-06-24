@@ -106,6 +106,7 @@ void setup()
 void loop() 
 {
     static long lastpress = 0;
+    // are we modulating pitch or filter?
     if ((digitalRead(PITCH_FLT_SW) == 0) && (millis() - lastpress > 200))  // switch is on (line pulled low)
     {
         lastpress = millis();
@@ -133,7 +134,7 @@ void loop()
         setCutoff(cutoff);
     }
     
-    // read the cutoff pot position
+    // read the LFO rate pot position
     int newrate = analogRead(RATE_POT) >> 3;
     // has it changed?
     if (newrate != rate)
@@ -143,7 +144,7 @@ void loop()
         setLFORate(rate);
     }
     
-    // read the cutoff pot position
+    // read the amount pot position
     int newamount = analogRead(AMOUNT_POT) >> 3;
     // has it changed?
     if (newamount != amount)

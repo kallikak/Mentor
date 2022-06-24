@@ -194,7 +194,7 @@ var Chorus = {};
     
         speed.start(0);
     
-        chorus.setSpeed = u => speed.frequency.value = 0.5 + 4.5 * u;
+        chorus.setSpeed = u => speed.frequency.setValueAtTime(0.5 + 4.5 * u, audioContext.currentTime);
         chorus.setDepth = u => depth.gain.value = u * 0.004;
         chorus.delay = delay;
         chorus.stop = () => {
@@ -242,7 +242,8 @@ var Flanger = {};
     
         speed.start(0);
     
-        flanger.setSpeed = u => speed.frequency.value = 0.05 + 2.45 * u;
+        flanger.setSpeed = u => speed.frequency.setValueAtTime(0.05 + 2.45 * u, audioContext.currentTime);
+        // flanger.setSpeed = u => speed.frequency.value = 0.05 + 2.45 * u;
         flanger.setDepth = u => depth.gain.value = u * 0.005;
         flanger.delay = delay;
         flanger.feedback = feedback;
@@ -304,7 +305,8 @@ var Phaser = {};
     
         speed.start(0);
     
-        phaser.setSpeed = u => speed.frequency.value = 0.05 + 4.5 * u;
+        phaser.setSpeed = u => speed.frequency.setValueAtTime(0.05 + 4.5 * u, audioContext.currentTime);
+        // phaser.setSpeed = u => speed.frequency.value = 0.05 + 4.5 * u;
         phaser.setDepth = u => depth.gain.value = u * 100;
         phaser.speed = speed;
         phaser.depth = depth;
